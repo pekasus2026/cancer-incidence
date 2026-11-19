@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cancer Incidence & ASR Calculator (Segi's World Standard)</title>
+    <!-- SheetJS สำหรับอ่านไฟล์ Excel (.xlsx / .xls) -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --primary: #1e3a8a;
+            --primary-light: #3b82f6;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --border: #cbd5e1;
+            --text: #1e293b;
+        }
+        * { box-sizing: border-box; font-family: 'Sarabun', 'Segoe UI', Tahoma, sans-serif; }
+        body { background: var(--bg); color: var(--text); margin: 0; padding: 14px; }
+        .container { width: 100%; max-width: 100%; margin: 0 auto; }
+        .header {
+            background: linear-gradient(135deg, #1e3a8a, #2563eb);
+            color: white; padding: 16px 22px; border-radius: 10px;
+            margin-bottom: 14px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        }
+        .header h1 { margin: 0 0 4px 0; font-size: 1.35rem; }
+        .header p { margin: 0; font-size: 0.85rem; opacity: 0.92; }
+        .panel {
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: 10px; padding: 16px; margin-bottom: 14px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+        .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; align-items: end; }
+        .form-group label { display: block; font-weight: 600; margin-bottom: 5px; font-size: 0.85rem; color: #334155; }
+        .form-group input[type="file"], .form-group select {
+            width: 100%; padding: 7px 10px; border: 1px solid var(--border);
+            border-radius: 6px; background: #fff; font-size: 0.85rem;
+        }
+        .status-badge {
+            display: inline-block; margin-top: 5px; font-size: 0.76rem;
+            padding: 2px 7px; border-radius: 4px; background: #e2e8f0; color: #475569;
+        }
+        .status-badge.ok { background: #dcfce7; color: #166534; font-weight: 600; }
+        .btn {
+            padding: 8px 14px; border: none; border-radius: 6px; font-weight: 600;
+            cursor: pointer; font-size: 0.85rem; transition: 0.2s;
+        }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: #1d4ed8; }
+        .btn-success { background: #059669; color: white; }
+        .btn-success:hover { background: #047857; }
+        .btn:disabled { background: #94a3b8; cursor: not-allowed; }
+        .summary-bar {
+            display: flex; flex-wrap: wrap; gap: 16px; background: #eff6ff;
+            border: 1px solid #bfdbfe; padding: 9px 14px; border-radius: 8px;
+            margin-bottom: 10px; font-size: 0.82rem;
+        }
+        .summary-bar span strong { color: var(--primary); }
+
+        /* ส่วนแสดงผลตารางให้พอดีหน้าจอและตัวอักษรเล็กลง */
+        .table-wrapper {
+            width: 100%; overflow-x: auto; max-height: 76vh;
+            border: 1px solid var(--border); border-radius: 8px; background: white;
+        }
+        table {
+            border-collapse: collapse; width: 100%;
+            font-size: 0.68rem; line-height: 1.25; white-space: nowrap;
+        }
+        th, td {
+            border: 1px solid #e2e8f0; padding: 3px 4px; text-align: right;
+        }
+        th {
+            background: #1e293b; color: white; position: sticky; top: 0; z-index: 2;
+            font-weight: 600; text-align: center; font-size: 0.66rem; padding: 5px 3px;
+        }
+        th:first-child, td:first-child {
+            position: sticky; left: 0; z-index: 1; text-align: left;
+            background: #f8fafc; font-weight: 600;
+            max-width: 155px; overflow: hidden; text-overflow: ellipsis;
+        }
+        th:first-child { z-index: 3; background: #0f172a; }
+        td:last-child { text-align: left; font-family: monospace; font-weight: 600; color: #334155; }
+        tr:nth-child(even) td:not(:first-child) { background: #f8fafc; }
+        tr:hover td { background: #e0f2fe !important; }
+        tr.total-row td { background: #fef3c7 !important; font-weight: 700; border-top: 2px solid #94a3b8; }
+        .segi-info { font-size: 0.76rem; color: #64748b; margin-top: 10px; line-height: 1.45; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>โปรแกรมคำนวณตาราง Cancer Incidence & ASR (Segi’s World Standard)</h1>
+        <p>คำนวณอัตราอุบัติการณ์โรคมะเร็งจำแนกตามกลุ่มอายุ (Age-Specific Incidence Rate), Crude Rate, Cumulative Risk (0-64, 0-74) และ ASR โดยใช้ประชากรมาตรฐานโลก Segi’s World Standard Population</p>
+    </div>
+
+    <!-- ส่วนที่ 1-3: นำเข้าไฟล์ข้อมูล -->
+    <div class="panel">
+        <div class="grid-3">
+            <div class="form-group">
+                <label>1. นำเข้าไฟล์ข้อมูลทะเบียนมะเร็ง (CMR .txt / .tsv / .csv)</label>
+                <input type="file" id="cancerFile" accept=".txt,.tsv,.csv">
+                <div id="cancerStatus" class="status-badge">ยังไม่ได้เลือกไฟล์</div>
+            </div>
+            <div class="form-group">
+                <label>2. นำเข้าไฟล์ประชากรเพศชาย (MalePop .xlsx / .xls / .csv)</label>
+                <input type="file" id="malePopFile" accept=".xlsx,.xls,.csv">
+                <div id="malePopStatus" class="status-badge">ยังไม่ได้เลือกไฟล์</div>
+            </div>
+            <div class="form-group">
+                <label>3. นำเข้าไฟล์ประชากรเพศหญิง (FemalePop .xlsx / .xls / .csv)</label>
+                <input type="file" id="femalePopFile" accept=".xlsx,.xls,.csv">
+                <div id="femalePopStatus" class="status-badge">ยังไม่ได้เลือกไฟล์</div>
+            </div>
+        </div>
+
+        <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 14px 0;">
+
+        <!-- ส่วนที่ 4-5: กรองข้อมูลเพศ และ ช่วงปี -->
+        <div class="grid-4">
+            <div class="form-group">
+                <label>4. กรองข้อมูลเพศ (Sex)</label>
+                <select id="sexFilter">
+                    <option value="1">เพศชาย (1 - Male)</option>
+                    <option value="2">เพศหญิง (2 - Female)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>5. ปีเริ่มต้น (Start Year)</label>
+                <select id="startYear"></select>
+            </div>
+            <div class="form-group">
+                <label>ปีที่สิ้นสุด (End Year)</label>
+                <select id="endYear"></select>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <button id="calcBtn" class="btn btn-primary" onclick="calculateIncidence()">คำนวณตาราง Incidence</button>
+                <button id="exportBtn" class="btn btn-success" onclick="exportCSV()" disabled>Export CSV</button>
+            </div>
+        </div>
+
+        <div class="segi-info">
+            <strong>Segi’s World Standard Population Weights (Total = 100,000):</strong>
+            0-4: 12,000 | 5-9: 10,000 | 10-14: 9,000 | 15-19: 9,000 | 20-24: 8,000 | 25-29: 8,000 | 30-34: 6,000 | 35-39: 6,000 | 40-44: 6,000 | 45-49: 6,000 | 50-54: 5,000 | 55-59: 4,000 | 60-64: 4,000 | 65-69: 3,000 | 70-74: 2,000 | 75-79: 1,000 | 80-84: 500 | 85+: 500
+        </div>
+    </div>
+
+    <!-- ส่วนแสดงผลลัพธ์ -->
+    <div id="resultPanel" class="panel" style="display: none;">
+        <div id="summaryBar" class="summary-bar"></div>
+        <div class="table-wrapper">
+            <table id="resultTable">
+                <thead>
+                    <tr>
+                        <th>SITE</th>
+                        <th>ALL AGES</th>
+                        <th>AGE UNK</th>
+                        <th>0-</th>
+                        <th>5-</th>
+                        <th>10-</th>
+                        <th>15-</th>
+                        <th>20-</th>
+                        <th>25-</th>
+                        <th>30-</th>
+                        <th>35-</th>
+                        <th>40-</th>
+                        <th>45-</th>
+                        <th>50-</th>
+                        <th>55-</th>
+                        <th>60-</th>
+                        <th>65-</th>
+                        <th>70-</th>
+                        <th>75-</th>
+                        <th>80-</th>
+                        <th>85+</th>
+                        <th>CRUDE RATE</th>
+                        <th>(%)</th>
+                        <th>CUM 0-64</th>
+                        <th>CUM 0-74</th>
+                        <th>ASR</th>
+                        <th>ICD (10th)</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+// น้ำหนักประชากรมาตรฐานโลกของ Segi (Segi's World Standard Population)
+const SEGI_WEIGHTS = [
+    12000, 10000, 9000, 9000, 8000, 8000,
+    6000, 6000, 6000, 6000, 5000, 4000,
+    4000, 3000, 2000, 1000, 500, 500
+];
+
+const AGE_GROUPS_LABELS = [
+    '0-4', '5-9', '10-14', '15-19', '20-24', '25-29',
+    '30-34', '35-39', '40-44', '45-49', '50-54', '55-59',
+    '60-64', '65-69', '70-74', '75-79', '80-84', '85+'
+];
+
+// โครงสร้างตารางตำแหน่งโรคมะเร็งมาตรฐาน IARC / CanReg5
+const CANCER_SITES = [
+    { site: "Lip", icd: "C00", prefixes: ["C00"] },
+    { site: "Tongue", icd: "C01-02", prefixes: ["C01", "C02"] },
+    { site: "Mouth", icd: "C03-06", prefixes: ["C03", "C04", "C05", "C06"] },
+    { site: "Salivary glands", icd: "C07-08", prefixes: ["C07", "C08"] },
+    { site: "Tonsil", icd: "C09", prefixes: ["C09"] },
+    { site: "Other oropharynx", icd: "C10", prefixes: ["C10"] },
+    { site: "Nasopharynx", icd: "C11", prefixes: ["C11"] },
+    { site: "Hypopharynx", icd: "C12-13", prefixes: ["C12", "C13"] },
+    { site: "Pharynx unspecified", icd: "C14", prefixes: ["C14"] },
+    { site: "Oesophagus", icd: "C15", prefixes: ["C15"] },
+    { site: "Stomach", icd: "C16", prefixes: ["C16"] },
+    { site: "Small intestine", icd: "C17", prefixes: ["C17"] },
+    { site: "Colon", icd: "C18", prefixes: ["C18"] },
+    { site: "Rectum", icd: "C19-20", prefixes: ["C19", "C20"] },
+    { site: "Anus", icd: "C21", prefixes: ["C21"] },
+    { site: "Liver", icd: "C22", prefixes: ["C22"] },
+    { site: "Gallbladder etc.", icd: "C23-24", prefixes: ["C23", "C24"] },
+    { site: "Pancreas", icd: "C25", prefixes: ["C25"] },
+    { site: "Nose, sinuses etc.", icd: "C30-31", prefixes: ["C30", "C31"] },
+    { site: "Larynx", icd: "C32", prefixes: ["C32"] },
+    { site: "Trachea, bronchus and lung", icd: "C33-34", prefixes: ["C33", "C34"] },
+    { site: "Other thoracic organs", icd: "C37-38", prefixes: ["C37", "C38"] },
+    { site: "Bone", icd: "C40-41", prefixes: ["C40", "C41"] },
+    { site: "Melanoma of skin", icd: "C43", prefixes: ["C43"] },
+    { site: "Other skin", icd: "C44", prefixes: ["C44"] },
+    { site: "Mesothelioma", icd: "C45", prefixes: ["C45"] },
+    { site: "Kaposi sarcoma", icd: "C46", prefixes: ["C46"] },
+    { site: "Connective and soft tissue", icd: "C47,C49", prefixes: ["C47", "C49"] },
+    { site: "Breast", icd: "C50", prefixes: ["C50"] },
+    { site: "Vulva", icd: "C51", prefixes: ["C51"], sexOnly: 2 },
+    { site: "Vagina", icd: "C52", prefixes: ["C52"], sexOnly: 2 },
+    { site: "Cervix uteri", icd: "C53", prefixes: ["C53"], sexOnly: 2 },
+    { site: "Corpus uteri", icd: "C54", prefixes: ["C54"], sexOnly: 2 },
+    { site: "Uterus unspecified", icd: "C55", prefixes: ["C55"], sexOnly: 2 },
+    { site: "Ovary", icd: "C56", prefixes: ["C56"], sexOnly: 2 },
+    { site: "Other female genital organs", icd: "C57", prefixes: ["C57"], sexOnly: 2 },
+    { site: "Placenta", icd: "C58", prefixes: ["C58"], sexOnly: 2 },
+    { site: "Penis", icd: "C60", prefixes: ["C60"], sexOnly: 1 },
+    { site: "Prostate", icd: "C61", prefixes: ["C61"], sexOnly: 1 },
+    { site: "Testis", icd: "C62", prefixes: ["C62"], sexOnly: 1 },
+    { site: "Other male genital organs", icd: "C63", prefixes: ["C63"], sexOnly: 1 },
+    { site: "Kidney", icd: "C64", prefixes: ["C64"] },
+    { site: "Renal pelvis", icd: "C65", prefixes: ["C65"] },
+    { site: "Ureter", icd: "C66", prefixes: ["C66"] },
+    { site: "Bladder", icd: "C67", prefixes: ["C67"] },
+    { site: "Other urinary organs", icd: "C68", prefixes: ["C68"] },
+    { site: "Eye", icd: "C69", prefixes: ["C69"] },
+    { site: "Brain, nervous system", icd: "C70-72", prefixes: ["C70", "C71", "C72"] },
+    { site: "Thyroid", icd: "C73", prefixes: ["C73"] },
+    { site: "Adrenal gland", icd: "C74", prefixes: ["C74"] },
+    { site: "Other endocrine", icd: "C75", prefixes: ["C75"] },
+    { site: "Hodgkin disease", icd: "C81", prefixes: ["C81"] },
+    { site: "Non-Hodgkin lymphoma", icd: "C82-85,C96", prefixes: ["C82", "C83", "C84", "C85", "C96"] },
+    { site: "Immunoproliferative diseases", icd: "C88", prefixes: ["C88"] },
+    { site: "Multiple myeloma", icd: "C90", prefixes: ["C90"] },
+    { site: "Lymphoid leukaemia", icd: "C91", prefixes: ["C91"] },
+    { site: "Myeloid leukaemia", icd: "C92-94", prefixes: ["C92", "C93", "C94"] },
+    { site: "Leukaemia unspecified", icd: "C95", prefixes: ["C95"] },
+    { site: "Myeloproliferative disorders", icd: "MPD", prefixes: ["D45", "D47"] },
+    { site: "Myelodysplastic syndromes", icd: "MDS", prefixes: ["D46"] },
+    { site: "Other and unspecified", icd: "O&U", prefixes: ["OTHER"] }
+];
+
+let cancerRecords = [];
+let malePopData = null;
+let femalePopData = null;
+let generatedCSVRows = [];
+
+function initYearSelects(years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]) {
+    const startSel = document.getElementById('startYear');
+    const endSel = document.getElementById('endYear');
+    startSel.innerHTML = '';
+    endSel.innerHTML = '';
+    years.forEach(y => {
+        startSel.add(new Option(y, y));
+        endSel.add(new Option(y, y));
+    });
+    startSel.value = years[0];
+    endSel.value = years[years.length - 1];
+}
+initYearSelects();
+
+document.getElementById('cancerFile').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(evt) {
+        const text = evt.target.result;
+        const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
+        if (lines.length < 2) return alert('ไฟล์ข้อมูลว่างเปล่า');
+
+        const delimiter = lines[0].includes('\t') ? '\t' : ',';
+        const headers = lines[0].split(delimiter).map(h => h.trim().toUpperCase());
+
+        const idxSex = headers.indexOf('SEX');
+        const idxAge = headers.indexOf('AGE');
+        const idxDiag = headers.indexOf('DIAGD');
+        const idxI10 = headers.indexOf('I10');
+        const idxMor = headers.indexOf('MOR');
+        const idxBeh = headers.indexOf('BEH');
+        const idxObsT = headers.indexOf('OBSOLETEFLAGTUMOURTABLE');
+        const idxObsP = headers.indexOf('OBSOLETEFLAGPATIENTTABLE');
+
+        if (idxSex === -1 || idxAge === -1 || idxDiag === -1 || idxI10 === -1) {
+            alert('ไม่พบคอลัมน์สำคัญ (SEX, AGE, DIAGD, I10) ในไฟล์ทะเบียนมะเร็ง');
+            return;
+        }
+
+        cancerRecords = [];
+        const yearSet = new Set();
+
+        for (let i = 1; i < lines.length; i++) {
+            const cols = lines[i].split(delimiter);
+            if (cols.length <= Math.max(idxSex, idxAge, idxDiag, idxI10)) continue;
+
+            if (idxObsT !== -1 && cols[idxObsT]?.trim() === '1') continue;
+            if (idxObsP !== -1 && cols[idxObsP]?.trim() === '1') continue;
+
+            const sex = parseInt(cols[idxSex]?.trim(), 10);
+            const ageRaw = cols[idxAge]?.trim();
+            const age = (ageRaw === '' || ageRaw === '999' || isNaN(Number(ageRaw))) ? null : parseInt(ageRaw, 10);
+            const diagStr = cols[idxDiag]?.trim() || '';
+            const year = diagStr.length >= 4 ? parseInt(diagStr.substring(0, 4), 10) : null;
+            const i10 = (cols[idxI10]?.trim() || '').toUpperCase();
+            const mor = idxMor !== -1 ? parseInt(cols[idxMor]?.trim(), 10) : null;
+            const beh = idxBeh !== -1 ? parseInt(cols[idxBeh]?.trim(), 10) : null;
+
+            if (year && !isNaN(year)) yearSet.add(year);
+            cancerRecords.push({ sex, age, year, i10, mor, beh });
+        }
+
+        const sortedYears = Array.from(yearSet).sort((a, b) => a - b);
+        if (sortedYears.length > 0) initYearSelects(sortedYears);
+
+        const badge = document.getElementById('cancerStatus');
+        badge.textContent = `โหลดสำเร็จ: ${cancerRecords.length.toLocaleString()} รายการ (ปี ${sortedYears[0]} - ${sortedYears[sortedYears.length-1]})`;
+        badge.classList.add('ok');
+    };
+    reader.readAsText(file, 'UTF-8');
+});
+
+function parsePopulationFile(file, callback) {
+    const reader = new FileReader();
+    reader.onload = function(evt) {
+        const data = new Uint8Array(evt.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const json = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: 0 });
+        callback(json);
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+document.getElementById('malePopFile').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    parsePopulationFile(file, (json) => {
+        malePopData = json;
+        const badge = document.getElementById('malePopStatus');
+        badge.textContent = `โหลดสำเร็จ: ${json.length} กลุ่มอายุ`;
+        badge.classList.add('ok');
+    });
+});
+
+document.getElementById('femalePopFile').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    parsePopulationFile(file, (json) => {
+        femalePopData = json;
+        const badge = document.getElementById('femalePopStatus');
+        badge.textContent = `โหลดสำเร็จ: ${json.length} กลุ่มอายุ`;
+        badge.classList.add('ok');
+    });
+});
+
+function mapSiteIndex(rec, sex) {
+    const code = rec.i10;
+    const prefix3 = code.substring(0, 3);
+
+    for (let i = 0; i < CANCER_SITES.length - 1; i++) {
+        const s = CANCER_SITES[i];
+        if (s.sexOnly && s.sexOnly !== sex) continue;
+        if (s.prefixes.includes(prefix3)) return i;
+    }
+
+    if (rec.mor) {
+        if ((rec.mor >= 9950 && rec.mor <= 9964) || rec.mor === 9975) {
+            return CANCER_SITES.findIndex(s => s.icd === 'MPD');
+        }
+        if (rec.mor >= 9980 && rec.mor <= 9989) {
+            return CANCER_SITES.findIndex(s => s.icd === 'MDS');
+        }
+    }
+
+    if (code.startsWith('C') || code.startsWith('D4')) {
+        return CANCER_SITES.length - 1;
+    }
+    return -1;
+}
+
+function getAgeGroupIndex(age) {
+    if (age === null || age < 0 || isNaN(age)) return -1;
+    if (age >= 85) return 17;
+    return Math.floor(age / 5);
+}
+
+function getPopulationByAgeGroup(popRows, startYear, endYear) {
+    const popByAge = new Array(18).fill(0);
+    popRows.forEach((row, idx) => {
+        const ageKey = Object.keys(row).find(k => k.toLowerCase().includes('age'));
+        let ageIdx = idx;
+        if (ageKey) {
+            const label = String(row[ageKey]).trim();
+            const foundIdx = AGE_GROUPS_LABELS.indexOf(label);
+            if (foundIdx !== -1) ageIdx = foundIdx;
+        }
+        if (ageIdx < 0 || ageIdx >= 18) return;
+
+        for (let y = startYear; y <= endYear; y++) {
+            const val = parseFloat(row[String(y)] ?? row[y] ?? 0);
+            if (!isNaN(val)) popByAge[ageIdx] += val;
+        }
+    });
+    return popByAge;
+}
+
+function calculateIncidence() {
+    if (cancerRecords.length === 0) {
+        alert('กรุณานำเข้าไฟล์ข้อมูลทะเบียนมะเร็งก่อน');
+        return;
+    }
+    const sex = parseInt(document.getElementById('sexFilter').value, 10);
+    const startYear = parseInt(document.getElementById('startYear').value, 10);
+    const endYear = parseInt(document.getElementById('endYear').value, 10);
+
+    if (startYear > endYear) {
+        alert('ปีเริ่มต้นต้องน้อยกว่าหรือเท่ากับปีที่สิ้นสุด');
+        return;
+    }
+
+    const popSource = (sex === 1) ? malePopData : femalePopData;
+    if (!popSource) {
+        alert(`กรุณานำเข้าไฟล์ประชากร${sex === 1 ? 'เพศชาย' : 'เพศหญิง'}ก่อน`);
+        return;
+    }
+
+    const popByAge = getPopulationByAgeGroup(popSource, startYear, endYear);
+    const totalPop = popByAge.reduce((a, b) => a + b, 0);
+
+    if (totalPop <= 0) {
+        alert(`ไม่พบข้อมูลประชากรในช่วงปี ${startYear} - ${endYear} ในไฟล์ประชากร`);
+        return;
+    }
+
+    const siteStats = CANCER_SITES.map(s => ({
+        site: s.site,
+        icd: s.icd,
+        sexOnly: s.sexOnly || null,
+        allAges: 0,
+        ageUnk: 0,
+        ageCounts: new Array(18).fill(0)
+    }));
+
+    cancerRecords.forEach(rec => {
+        if (rec.sex !== sex) return;
+        if (!rec.year || rec.year < startYear || rec.year > endYear) return;
+
+        const siteIdx = mapSiteIndex(rec, sex);
+        if (siteIdx === -1) return;
+
+        const ageIdx = getAgeGroupIndex(rec.age);
+        siteStats[siteIdx].allAges++;
+        if (ageIdx === -1) {
+            siteStats[siteIdx].ageUnk++;
+        } else {
+            siteStats[siteIdx].ageCounts[ageIdx]++;
+        }
+    });
+
+    const allSitesRow = { site: "All sites", icd: "ALL", allAges: 0, ageUnk: 0, ageCounts: new Array(18).fill(0) };
+    const allButC44Row = { site: "All sites but C44", icd: "ALLbC44", allAges: 0, ageUnk: 0, ageCounts: new Array(18).fill(0) };
+
+    siteStats.forEach(st => {
+        allSitesRow.allAges += st.allAges;
+        allSitesRow.ageUnk += st.ageUnk;
+        for (let i = 0; i < 18; i++) allSitesRow.ageCounts[i] += st.ageCounts[i];
+
+        if (st.icd !== "C44") {
+            allButC44Row.allAges += st.allAges;
+            allButC44Row.ageUnk += st.ageUnk;
+            for (let i = 0; i < 18; i++) allButC44Row.ageCounts[i] += st.ageCounts[i];
+        }
+    });
+
+    const totalCasesNoSkin = allButC44Row.allAges || 1;
+
+    function computeMetrics(rowObj) {
+        const rates = new Array(18).fill(0);
+        let asrRaw = 0;
+        let cum0_64 = 0;
+        let cum0_74 = 0;
+
+        for (let i = 0; i < 18; i++) {
+            const rate = popByAge[i] > 0 ? (rowObj.ageCounts[i] / popByAge[i]) * 100000 : 0;
+            rates[i] = rate;
+            asrRaw += (rate * SEGI_WEIGHTS[i]) / 100000;
+            if (i <= 12) cum0_64 += (rate * 5) / 100000 * 100;
+            if (i <= 14) cum0_74 += (rate * 5) / 100000 * 100;
+        }
+
+        const knownAges = rowObj.allAges - rowObj.ageUnk;
+        const asr = (knownAges > 0 && rowObj.ageUnk > 0) ? asrRaw * (rowObj.allAges / knownAges) : asrRaw;
+        const crudeRate = (rowObj.allAges / totalPop) * 100000;
+        const pct = (rowObj.allAges / totalCasesNoSkin) * 100;
+
+        return {
+            site: rowObj.site,
+            allAges: rowObj.allAges,
+            ageUnk: rowObj.ageUnk,
+            rates: rates.map(r => Number(r.toFixed(1))),
+            crudeRate: Number(crudeRate.toFixed(2)),
+            pct: Number(pct.toFixed(1)),
+            cum0_64: Number(cum0_64.toFixed(2)),
+            cum0_74: Number(cum0_74.toFixed(2)),
+            asr: Number(asr.toFixed(1)),
+            icd: rowObj.icd
+        };
+    }
+
+    const filteredSites = siteStats.filter(s => !s.sexOnly || s.sexOnly === sex);
+    const finalRows = [
+        ...filteredSites.map(computeMetrics),
+        computeMetrics(allSitesRow),
+        computeMetrics(allButC44Row)
+    ];
+
+    renderTable(finalRows, sex, startYear, endYear, totalPop, allSitesRow.allAges);
+}
+
+function renderTable(rows, sex, startYear, endYear, totalPop, totalCases) {
+    const tbody = document.getElementById('tableBody');
+    tbody.innerHTML = '';
+    generatedCSVRows = [];
+
+    const headerCSV = [
+        'SITE','ALL AGES','AGE UNK','0-','5-','10-','15-','20-','25-','30-','35-',
+        '40-','45-','50-','55-','60-','65-','70-','75-','80-','85+',
+        'CRUDE RATE','(%)','CUM 0-64','CUM 0-74','ASR','ICD (10th)'
+    ];
+    generatedCSVRows.push(headerCSV);
+
+    rows.forEach(r => {
+        const isTotal = (r.icd === 'ALL' || r.icd === 'ALLbC44');
+        const tr = document.createElement('tr');
+        if (isTotal) tr.className = 'total-row';
+
+        const cells = [
+            r.site,
+            r.allAges,
+            r.ageUnk,
+            ...r.rates,
+            r.crudeRate.toFixed(2),
+            r.pct.toFixed(1),
+            r.cum0_64.toFixed(2),
+            r.cum0_74.toFixed(2),
+            r.asr.toFixed(1),
+            r.icd
+        ];
+
+        generatedCSVRows.push(cells);
+
+        cells.forEach(val => {
+            const td = document.createElement('td');
+            td.textContent = val;
+            tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+    });
+
+    const summaryBar = document.getElementById('summaryBar');
+    summaryBar.innerHTML = `
+        <span>เพศที่เลือก: <strong>${sex === 1 ? 'ชาย (Male)' : 'หญิง (Female)'}</strong></span>
+        <span>ช่วงปีที่วินิจฉัย: <strong>${startYear} - ${endYear}</strong></span>
+        <span>จำนวนผู้ป่วยทั้งหมด (All sites): <strong>${totalCases.toLocaleString()} ราย</strong></span>
+        <span>ประชากรรวมช่วงปีที่เลือก (Person-years): <strong>${Math.round(totalPop).toLocaleString()} คน</strong></span>
+    `;
+
+    document.getElementById('resultPanel').style.display = 'block';
+    document.getElementById('exportBtn').disabled = false;
+}
+
+function exportCSV() {
+    if (generatedCSVRows.length === 0) return;
+    const sexLabel = document.getElementById('sexFilter').value === '1' ? 'Male' : 'Female';
+    const startYear = document.getElementById('startYear').value;
+    const endYear = document.getElementById('endYear').value;
+
+    const csvContent = "\uFEFF" + generatedCSVRows.map(row =>
+        row.map(cell => {
+            const str = String(cell);
+            return str.includes(',') ? `"${str}"` : str;
+        }).join(',')
+    ).join('\r\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Inc_CMR${startYear}t${endYear}${sexLabel}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+</script>
+</body>
+</html>
