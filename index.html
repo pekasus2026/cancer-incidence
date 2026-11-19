@@ -3,192 +3,447 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cancer Incidence & ASR Calculator (Segi's World Standard)</title>
+    <title>Cancer Registry Dashboard & Incidence Calculator</title>
     <!-- SheetJS สำหรับอ่านไฟล์ Excel (.xlsx / .xls) -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+    <!-- Chart.js สำหรับสร้างกราฟต่างๆ -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <style>
         :root {
+            --sidebar-bg: #0f172a;
+            --sidebar-hover: #1e293b;
+            --sidebar-active: #2563eb;
             --primary: #1e3a8a;
-            --primary-light: #3b82f6;
-            --bg: #f8fafc;
+            --bg: #f1f5f9;
             --card: #ffffff;
             --border: #cbd5e1;
             --text: #1e293b;
         }
         * { box-sizing: border-box; font-family: 'Sarabun', 'Segoe UI', Tahoma, sans-serif; }
-        body { background: var(--bg); color: var(--text); margin: 0; padding: 14px; }
-        .container { width: 100%; max-width: 100%; margin: 0 auto; }
-        .header {
-            background: linear-gradient(135deg, #1e3a8a, #2563eb);
-            color: white; padding: 16px 22px; border-radius: 10px;
-            margin-bottom: 14px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        body { margin: 0; background: var(--bg); color: var(--text); display: flex; min-height: 100vh; }
+
+        /* เมนูด้านซ้าย */
+        .sidebar {
+            width: 240px; min-width: 240px; background: var(--sidebar-bg); color: #f8fafc;
+            display: flex; flex-direction: column; padding: 18px 12px; position: sticky; top: 0; height: 100vh;
         }
-        .header h1 { margin: 0 0 4px 0; font-size: 1.35rem; }
-        .header p { margin: 0; font-size: 0.85rem; opacity: 0.92; }
+        .sidebar-brand {
+            font-size: 1.05rem; font-weight: 700; padding: 8px 10px 16px;
+            border-bottom: 1px solid #334155; margin-bottom: 14px; line-height: 1.35;
+        }
+        .sidebar-brand small { display: block; font-size: 0.72rem; color: #94a3b8; font-weight: 400; margin-top: 3px; }
+        .nav-btn {
+            display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+            padding: 11px 13px; margin-bottom: 8px; border: none; border-radius: 8px;
+            background: transparent; color: #cbd5e1; font-size: 0.86rem; font-weight: 600;
+            cursor: pointer; transition: 0.2s; line-height: 1.3;
+        }
+        .nav-btn:hover { background: var(--sidebar-hover); color: #fff; }
+        .nav-btn.active { background: var(--sidebar-active); color: #fff; box-shadow: 0 2px 6px rgba(37,99,235,0.4); }
+        .sidebar-note {
+            margin-top: auto; font-size: 0.72rem; color: #94a3b8; line-height: 1.45;
+            padding: 10px; border-top: 1px solid #334155;
+        }
+
+        /* พื้นที่เนื้อหาหลัก */
+        .main-content { flex: 1; padding: 16px 20px; overflow-x: hidden; }
         .panel {
             background: var(--card); border: 1px solid var(--border);
-            border-radius: 10px; padding: 16px; margin-bottom: 14px;
+            border-radius: 10px; padding: 14px 16px; margin-bottom: 14px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         }
-        .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
-        .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; align-items: end; }
-        .form-group label { display: block; font-weight: 600; margin-bottom: 5px; font-size: 0.85rem; color: #334155; }
+        .section-title {
+            margin: 18px 0 10px; font-size: 1.08rem; font-weight: 700; color: #0f172a;
+            display: flex; align-items: center; gap: 8px; border-left: 4px solid var(--sidebar-active);
+            padding-left: 10px;
+        }
+        .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; }
+        .grid-filter { display: grid; grid-template-columns: repeat(auto-fit, minmax(155px, 1fr)); gap: 10px; align-items: end; }
+        .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 14px; }
+        .grid-kpi { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 14px; }
+
+        .form-group label { display: block; font-weight: 600; margin-bottom: 4px; font-size: 0.8rem; color: #334155; }
         .form-group input[type="file"], .form-group select {
-            width: 100%; padding: 7px 10px; border: 1px solid var(--border);
-            border-radius: 6px; background: #fff; font-size: 0.85rem;
+            width: 100%; padding: 6px 8px; border: 1px solid var(--border);
+            border-radius: 6px; background: #fff; font-size: 0.82rem;
         }
         .status-badge {
-            display: inline-block; margin-top: 5px; font-size: 0.76rem;
-            padding: 2px 7px; border-radius: 4px; background: #e2e8f0; color: #475569;
+            display: inline-block; margin-top: 4px; font-size: 0.72rem;
+            padding: 2px 6px; border-radius: 4px; background: #e2e8f0; color: #475569;
         }
         .status-badge.ok { background: #dcfce7; color: #166534; font-weight: 600; }
+
+        .kpi-card {
+            background: #fff; border: 1px solid var(--border); border-radius: 10px;
+            padding: 12px 14px; box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+        }
+        .kpi-card .kpi-label { font-size: 0.78rem; color: #64748b; font-weight: 600; }
+        .kpi-card .kpi-val { font-size: 1.45rem; font-weight: 700; color: #0f172a; margin-top: 3px; }
+        .kpi-card .kpi-sub { font-size: 0.72rem; color: #475569; margin-top: 2px; }
+
+        .qc-overall-grid {
+            display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 10px;
+        }
+        .qc-box {
+            border-radius: 8px; padding: 10px 12px; border: 1px solid #cbd5e1; background: #f8fafc;
+        }
+        .qc-box.hv-box { border-left: 4px solid #059669; }
+        .qc-box.dco-box { border-left: 4px solid #dc2626; }
+        .qc-box .qc-title { font-size: 0.75rem; color: #475569; font-weight: 600; }
+        .qc-box .qc-num { font-size: 1.3rem; font-weight: 700; color: #0f172a; margin-top: 2px; }
+        .qc-box .qc-detail { font-size: 0.7rem; color: #64748b; }
+
+        .chart-card {
+            background: #fff; border: 1px solid var(--border); border-radius: 10px;
+            padding: 12px 14px; box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+            display: flex; flex-direction: column;
+        }
+        .chart-card h4 { margin: 0 0 8px 0; font-size: 0.88rem; color: #1e293b; }
+        .chart-box { position: relative; height: 280px; width: 100%; }
+        .chart-box.compact { height: 215px; }
+
         .btn {
-            padding: 8px 14px; border: none; border-radius: 6px; font-weight: 600;
-            cursor: pointer; font-size: 0.85rem; transition: 0.2s;
+            padding: 7px 12px; border: none; border-radius: 6px; font-weight: 600;
+            cursor: pointer; font-size: 0.82rem; transition: 0.2s;
         }
         .btn-primary { background: var(--primary); color: white; }
         .btn-primary:hover { background: #1d4ed8; }
         .btn-success { background: #059669; color: white; }
         .btn-success:hover { background: #047857; }
         .btn:disabled { background: #94a3b8; cursor: not-allowed; }
+
         .summary-bar {
             display: flex; flex-wrap: wrap; gap: 16px; background: #eff6ff;
-            border: 1px solid #bfdbfe; padding: 9px 14px; border-radius: 8px;
-            margin-bottom: 10px; font-size: 0.82rem;
+            border: 1px solid #bfdbfe; padding: 8px 12px; border-radius: 8px;
+            margin-bottom: 10px; font-size: 0.78rem;
         }
         .summary-bar span strong { color: var(--primary); }
 
-        /* ส่วนแสดงผลตารางให้พอดีหน้าจอและตัวอักษรเล็กลง */
+        /* ตารางผลลัพธ์ปรับขนาดอักษรให้เล็กลงพอดีหน้าจอ */
         .table-wrapper {
-            width: 100%; overflow-x: auto; max-height: 76vh;
+            width: 100%; overflow-x: auto; max-height: 75vh;
             border: 1px solid var(--border); border-radius: 8px; background: white;
         }
         table {
             border-collapse: collapse; width: 100%;
             font-size: 0.68rem; line-height: 1.25; white-space: nowrap;
         }
-        th, td {
-            border: 1px solid #e2e8f0; padding: 3px 4px; text-align: right;
-        }
+        th, td { border: 1px solid #e2e8f0; padding: 3px 5px; text-align: right; }
         th {
             background: #1e293b; color: white; position: sticky; top: 0; z-index: 2;
-            font-weight: 600; text-align: center; font-size: 0.66rem; padding: 5px 3px;
+            font-weight: 600; text-align: center; font-size: 0.65rem; padding: 5px 4px;
         }
         th:first-child, td:first-child {
             position: sticky; left: 0; z-index: 1; text-align: left;
-            background: #f8fafc; font-weight: 600;
-            max-width: 155px; overflow: hidden; text-overflow: ellipsis;
+            background: #f8fafc; font-weight: 600; max-width: 165px;
+            overflow: hidden; text-overflow: ellipsis;
         }
         th:first-child { z-index: 3; background: #0f172a; }
         td:last-child { text-align: left; font-family: monospace; font-weight: 600; color: #334155; }
         tr:nth-child(even) td:not(:first-child) { background: #f8fafc; }
         tr:hover td { background: #e0f2fe !important; }
         tr.total-row td { background: #fef3c7 !important; font-weight: 700; border-top: 2px solid #94a3b8; }
-        .segi-info { font-size: 0.76rem; color: #64748b; margin-top: 10px; line-height: 1.45; }
+
+        @media (max-width: 768px) {
+            body { flex-direction: column; }
+            .sidebar { width: 100%; min-width: 100%; height: auto; position: relative; }
+            .grid-2 { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body>
-<div class="container">
-    <div class="header">
-        <h1>โปรแกรมคำนวณตาราง Cancer Incidence & ASR (Segi’s World Standard)</h1>
-        <p>คำนวณอัตราอุบัติการณ์โรคมะเร็งจำแนกตามกลุ่มอายุ (Age-Specific Incidence Rate), Crude Rate, Cumulative Risk (0-64, 0-74) และ ASR โดยใช้ประชากรมาตรฐานโลก Segi’s World Standard Population</p>
-    </div>
 
-    <!-- ส่วนที่ 1-3: นำเข้าไฟล์ข้อมูล -->
+<!-- เมนูด้านซ้าย -->
+<aside class="sidebar">
+    <div class="sidebar-brand">
+        Cancer Registry System
+        <small>Dashboard, Incidence & Cases</small>
+    </div>
+    <button id="navDashboard" class="nav-btn active" onclick="switchView('dashboard')">
+        <span>1. หน้าหลัก (Dashboard)</span>
+    </button>
+    <button id="navIncidence" class="nav-btn" onclick="switchView('incidence')">
+        <span>2. คำนวณตาราง Incidence</span>
+    </button>
+    <button id="navNumberCases" class="nav-btn" onclick="switchView('numberCases')">
+        <span>3. คำนวณตาราง Number of Cases</span>
+    </button>
+    <div class="sidebar-note">
+        * เลือกช่วงปีและเพศ หรือสลับเมนูด้านซ้ายเพื่อดู Dashboard, ตาราง Incidence และตาราง Number of Cases
+    </div>
+</aside>
+
+<!-- เนื้อหาหลัก -->
+<main class="main-content">
+    <!-- กล่องอัปโหลดไฟล์และตัวกรอง -->
     <div class="panel">
         <div class="grid-3">
             <div class="form-group">
-                <label>1. นำเข้าไฟล์ข้อมูลทะเบียนมะเร็ง (CMR .txt / .tsv / .csv)</label>
+                <label>1. ไฟล์ทะเบียนมะเร็ง (CMR .txt / .tsv / .csv)</label>
                 <input type="file" id="cancerFile" accept=".txt,.tsv,.csv">
                 <div id="cancerStatus" class="status-badge">ยังไม่ได้เลือกไฟล์</div>
             </div>
             <div class="form-group">
-                <label>2. นำเข้าไฟล์ประชากรเพศชาย (MalePop .xlsx / .xls / .csv)</label>
+                <label>2. ไฟล์ประชากรเพศชาย (MalePop .xlsx / .xls / .csv)</label>
                 <input type="file" id="malePopFile" accept=".xlsx,.xls,.csv">
                 <div id="malePopStatus" class="status-badge">ยังไม่ได้เลือกไฟล์</div>
             </div>
             <div class="form-group">
-                <label>3. นำเข้าไฟล์ประชากรเพศหญิง (FemalePop .xlsx / .xls / .csv)</label>
+                <label>3. ไฟล์ประชากรเพศหญิง (FemalePop .xlsx / .xls / .csv)</label>
                 <input type="file" id="femalePopFile" accept=".xlsx,.xls,.csv">
                 <div id="femalePopStatus" class="status-badge">ยังไม่ได้เลือกไฟล์</div>
             </div>
         </div>
 
-        <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 14px 0;">
+        <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 12px 0;">
 
-        <!-- ส่วนที่ 4-5: กรองข้อมูลเพศ และ ช่วงปี -->
-        <div class="grid-4">
+        <div class="grid-filter">
             <div class="form-group">
-                <label>4. กรองข้อมูลเพศ (Sex)</label>
-                <select id="sexFilter">
+                <label>ปีเริ่มต้น (Start Year)</label>
+                <select id="startYear" onchange="onFilterChange()"></select>
+            </div>
+            <div class="form-group">
+                <label>ปีที่สิ้นสุด (End Year)</label>
+                <select id="endYear" onchange="onFilterChange()"></select>
+            </div>
+            <div class="form-group" id="dashSexGroup">
+                <label>เพศ (หน้าหลัก)</label>
+                <select id="dashSexFilter" onchange="onFilterChange()">
+                    <option value="all">ทั้งหมด (All)</option>
+                    <option value="1">เพศชาย (Male)</option>
+                    <option value="2">เพศหญิง (Female)</option>
+                </select>
+            </div>
+            <div class="form-group" id="tableSexGroup" style="display: none;">
+                <label>กรองเพศ (Sex)</label>
+                <select id="sexFilter" onchange="onTableSexChange()">
                     <option value="1">เพศชาย (1 - Male)</option>
                     <option value="2">เพศหญิง (2 - Female)</option>
                 </select>
             </div>
-            <div class="form-group">
-                <label>5. ปีเริ่มต้น (Start Year)</label>
-                <select id="startYear"></select>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                <button id="refreshDashBtn" class="btn btn-primary" onclick="renderDashboard()">อัปเดต Dashboard</button>
+                <button id="calcIncBtn" class="btn btn-primary" style="display: none;" onclick="calculateIncidence()">คำนวณตาราง Incidence</button>
+                <button id="calcNumBtn" class="btn btn-primary" style="display: none;" onclick="calculateNumberOfCases()">คำนวณ Number of Cases</button>
+                <button id="exportBtn" class="btn btn-success" style="display: none;" onclick="exportCSV()" disabled>Export CSV</button>
             </div>
-            <div class="form-group">
-                <label>ปีที่สิ้นสุด (End Year)</label>
-                <select id="endYear"></select>
-            </div>
-            <div style="display: flex; gap: 8px;">
-                <button id="calcBtn" class="btn btn-primary" onclick="calculateIncidence()">คำนวณตาราง Incidence</button>
-                <button id="exportBtn" class="btn btn-success" onclick="exportCSV()" disabled>Export CSV</button>
-            </div>
-        </div>
-
-        <div class="segi-info">
-            <strong>Segi’s World Standard Population Weights (Total = 100,000):</strong>
-            0-4: 12,000 | 5-9: 10,000 | 10-14: 9,000 | 15-19: 9,000 | 20-24: 8,000 | 25-29: 8,000 | 30-34: 6,000 | 35-39: 6,000 | 40-44: 6,000 | 45-49: 6,000 | 50-54: 5,000 | 55-59: 4,000 | 60-64: 4,000 | 65-69: 3,000 | 70-74: 2,000 | 75-79: 1,000 | 80-84: 500 | 85+: 500
         </div>
     </div>
 
-    <!-- ส่วนแสดงผลลัพธ์ -->
-    <div id="resultPanel" class="panel" style="display: none;">
-        <div id="summaryBar" class="summary-bar"></div>
-        <div class="table-wrapper">
-            <table id="resultTable">
-                <thead>
-                    <tr>
-                        <th>SITE</th>
-                        <th>ALL AGES</th>
-                        <th>AGE UNK</th>
-                        <th>0-</th>
-                        <th>5-</th>
-                        <th>10-</th>
-                        <th>15-</th>
-                        <th>20-</th>
-                        <th>25-</th>
-                        <th>30-</th>
-                        <th>35-</th>
-                        <th>40-</th>
-                        <th>45-</th>
-                        <th>50-</th>
-                        <th>55-</th>
-                        <th>60-</th>
-                        <th>65-</th>
-                        <th>70-</th>
-                        <th>75-</th>
-                        <th>80-</th>
-                        <th>85+</th>
-                        <th>CRUDE RATE</th>
-                        <th>(%)</th>
-                        <th>CUM 0-64</th>
-                        <th>CUM 0-74</th>
-                        <th>ASR</th>
-                        <th>ICD (10th)</th>
-                    </tr>
-                </thead>
-                <tbody id="tableBody"></tbody>
-            </table>
+    <!-- มุมมองที่ 1: หน้าหลัก (Dashboard) -->
+    <div id="dashboardView">
+        <!-- ข้อมูลทั่วไป / จำนวน Case -->
+        <div class="grid-kpi">
+            <div class="kpi-card">
+                <div class="kpi-label">จำนวนผู้ป่วยตามตัวกรอง (Cases)</div>
+                <div id="kpiTotalCases" class="kpi-val">0</div>
+                <div id="kpiYearLabel" class="kpi-sub">ช่วงปี: -</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">เพศชาย (Male - SEX 1)</div>
+                <div id="kpiMaleCases" class="kpi-val">0</div>
+                <div id="kpiMalePct" class="kpi-sub">0.0%</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">เพศหญิง (Female - SEX 2)</div>
+                <div id="kpiFemaleCases" class="kpi-val">0</div>
+                <div id="kpiFemalePct" class="kpi-sub">0.0%</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">ประชากรรวมช่วงปี (Person-Years)</div>
+                <div id="kpiTotalPop" class="kpi-val">0</div>
+                <div id="kpiPopBreak" class="kpi-sub">ชาย: 0 | หญิง: 0</div>
+            </div>
+        </div>
+
+        <!-- กราฟประชากรและสัดส่วนเพศ -->
+        <div class="grid-2">
+            <div class="chart-card">
+                <h4>ปิรามิดประชากร (Population Pyramid: เรียงอายุน้อยอยู่ด้านล่าง)</h4>
+                <div class="chart-box"><canvas id="pyramidChart"></canvas></div>
+            </div>
+            <div class="chart-card">
+                <h4>จำนวนรายจำแนกตามกลุ่มอายุ (ชาย-หญิง แยกสีในแท่งเดียว)</h4>
+                <div class="chart-box"><canvas id="stackedAgeChart"></canvas></div>
+            </div>
+        </div>
+
+        <div class="grid-2" style="margin-top: 14px;">
+            <div class="chart-card">
+                <h4>สัดส่วนจำนวนและร้อยละของผู้ป่วยแยกตามเพศ</h4>
+                <div class="chart-box"><canvas id="sexPieChart"></canvas></div>
+            </div>
+            <div class="chart-card">
+                <h4>สรุปตัวชี้วัดคุณภาพสำคัญ (HV% และ DCO% ช่วงปีที่เลือก)</h4>
+                <div class="qc-overall-grid">
+                    <div class="qc-box hv-box">
+                        <div class="qc-title">HV% รวม (BASIS = 5, 6, 7, 8)</div>
+                        <div id="qcOverallHvVal" class="qc-num">0.0%</div>
+                        <div id="qcOverallHvSub" class="qc-detail">0 / 0 ราย</div>
+                    </div>
+                    <div class="qc-box dco-box">
+                        <div class="qc-title">DCO% รวม (BASIS = 0)</div>
+                        <div id="qcOverallDcoVal" class="qc-num">0.0%</div>
+                        <div id="qcOverallDcoSub" class="qc-detail">0 / 0 ราย</div>
+                    </div>
+                </div>
+                <div class="grid-2" style="grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <div style="font-size: 0.76rem; font-weight: 600; color: #065f46; margin-bottom: 4px;">HV% เปรียบเทียบชาย - หญิง (0–100%)</div>
+                        <div class="chart-box compact"><canvas id="qcHvGenderChart"></canvas></div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.76rem; font-weight: 600; color: #991b1b; margin-bottom: 4px;">DCO% เปรียบเทียบชาย - หญิง (สูงสุด 20%)</div>
+                        <div class="chart-box compact"><canvas id="qcDcoGenderChart"></canvas></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top 10 จำนวนราย ชาย/หญิง -->
+        <div class="grid-2" style="margin-top: 14px;">
+            <div class="chart-card">
+                <h4>Top 10 โรคมะเร็งที่พบบ่อย (จำนวนราย): เพศชาย</h4>
+                <div class="chart-box"><canvas id="top10MaleCountChart"></canvas></div>
+            </div>
+            <div class="chart-card">
+                <h4>Top 10 โรคมะเร็งที่พบบ่อย (จำนวนราย): เพศหญิง</h4>
+                <div class="chart-box"><canvas id="top10FemaleCountChart"></canvas></div>
+            </div>
+        </div>
+
+        <!-- Top 10 ASR ชาย/หญิง -->
+        <div class="grid-2" style="margin-top: 14px;">
+            <div class="chart-card">
+                <h4>Top 10 อัตราอุบัติการณ์มาตรฐาน ASR (ต่อ 100,000): เพศชาย</h4>
+                <div class="chart-box"><canvas id="top10MaleAsrChart"></canvas></div>
+            </div>
+            <div class="chart-card">
+                <h4>Top 10 อัตราอุบัติการณ์มาตรฐาน ASR (ต่อ 100,000): เพศหญิง</h4>
+                <div class="chart-box"><canvas id="top10FemaleAsrChart"></canvas></div>
+            </div>
+        </div>
+
+        <!-- กราฟ Stage by extent และ Stage by TNM Stage -->
+        <div class="grid-2" style="margin-top: 14px;">
+            <div class="chart-card">
+                <h4>Stage by extent (100% Stacked Bar Chart): ร้อยละของ EXT</h4>
+                <div class="chart-box"><canvas id="stageExtentChart"></canvas></div>
+            </div>
+            <div class="chart-card">
+                <h4>Stage by TNM Stage (100% กราฟวงกลม): ร้อยละของ STAG</h4>
+                <div class="chart-box"><canvas id="stageTnmChart"></canvas></div>
+            </div>
+        </div>
+
+        <!-- ส่วนที่ 2: การควบคุมคุณภาพ (Quality Control) -->
+        <div class="section-title">ส่วนที่ 2: การควบคุมคุณภาพ (Quality Control)</div>
+        <div class="grid-2">
+            <div class="chart-card">
+                <h4>จำนวน Case รายปี (Annual Cases: กล่องด้านบน = ค่ารวม, แท่งกราฟ = ชาย/หญิง)</h4>
+                <div class="chart-box"><canvas id="annualCasesChart"></canvas></div>
+            </div>
+            <div class="chart-card">
+                <h4>HV% (BASIS = 5, 6, 7, 8) รายปี: กล่องด้านบน = HV% รวม, แท่งกราฟ = ชาย/หญิง</h4>
+                <div class="chart-box"><canvas id="hvChart"></canvas></div>
+            </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+            <div class="chart-card">
+                <h4>DCO% (BASIS = 0) รายปี: กล่องด้านบน = DCO% รวม, แท่งกราฟ = ชาย/หญิง (สูงสุด 20%)</h4>
+                <div class="chart-box"><canvas id="dcoChart"></canvas></div>
+            </div>
+            <div class="chart-card">
+                <h4>แนวโน้ม HV% และ DCO% รวมรายปี (%)</h4>
+                <div class="chart-box"><canvas id="qcTrendChart"></canvas></div>
+            </div>
         </div>
     </div>
-</div>
+
+    <!-- มุมมองที่ 2: ตาราง Incidence -->
+    <div id="incidenceView" style="display: none;">
+        <div id="incResultPanel" class="panel" style="display: none;">
+            <div id="incSummaryBar" class="summary-bar"></div>
+            <div class="table-wrapper">
+                <table id="incResultTable">
+                    <thead>
+                        <tr>
+                            <th>SITE</th>
+                            <th>ALL AGES</th>
+                            <th>AGE UNK</th>
+                            <th>0-</th>
+                            <th>5-</th>
+                            <th>10-</th>
+                            <th>15-</th>
+                            <th>20-</th>
+                            <th>25-</th>
+                            <th>30-</th>
+                            <th>35-</th>
+                            <th>40-</th>
+                            <th>45-</th>
+                            <th>50-</th>
+                            <th>55-</th>
+                            <th>60-</th>
+                            <th>65-</th>
+                            <th>70-</th>
+                            <th>75-</th>
+                            <th>80-</th>
+                            <th>85+</th>
+                            <th>CRUDE RATE</th>
+                            <th>(%)</th>
+                            <th>CUM 0-64</th>
+                            <th>CUM 0-74</th>
+                            <th>ASR</th>
+                            <th>ICD (10th)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="incTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- มุมมองที่ 3: ตาราง Number of Cases (โครงสร้างตาม NumberMale.csv / NumberFemale.csv) -->
+    <div id="numberCasesView" style="display: none;">
+        <div id="numResultPanel" class="panel" style="display: none;">
+            <div id="numSummaryBar" class="summary-bar"></div>
+            <div class="table-wrapper">
+                <table id="numResultTable">
+                    <thead>
+                        <tr>
+                            <th>SITE</th>
+                            <th>ALL AGES</th>
+                            <th>AGE UNK</th>
+                            <th>0-</th>
+                            <th>5-</th>
+                            <th>10-</th>
+                            <th>15-</th>
+                            <th>20-</th>
+                            <th>25-</th>
+                            <th>30-</th>
+                            <th>35-</th>
+                            <th>40-</th>
+                            <th>45-</th>
+                            <th>50-</th>
+                            <th>55-</th>
+                            <th>60-</th>
+                            <th>65-</th>
+                            <th>70-</th>
+                            <th>75-</th>
+                            <th>80-</th>
+                            <th>85+</th>
+                            <th>(%)</th>
+                            <th>ICD (10th)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="numTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</main>
 
 <script>
-// น้ำหนักประชากรมาตรฐานโลกของ Segi (Segi's World Standard Population)
 const SEGI_WEIGHTS = [
     12000, 10000, 9000, 9000, 8000, 8000,
     6000, 6000, 6000, 6000, 5000, 4000,
@@ -201,7 +456,6 @@ const AGE_GROUPS_LABELS = [
     '60-64', '65-69', '70-74', '75-79', '80-84', '85+'
 ];
 
-// โครงสร้างตารางตำแหน่งโรคมะเร็งมาตรฐาน IARC / CanReg5
 const CANCER_SITES = [
     { site: "Lip", icd: "C00", prefixes: ["C00"] },
     { site: "Tongue", icd: "C01-02", prefixes: ["C01", "C02"] },
@@ -266,10 +520,171 @@ const CANCER_SITES = [
     { site: "Other and unspecified", icd: "O&U", prefixes: ["OTHER"] }
 ];
 
+function drawRoundedBox(ctx, x, y, width, height, radius, fillColor, strokeColor) {
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + width - radius, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+    ctx.lineTo(x + width, y + height - radius);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+    ctx.lineTo(x + radius, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.closePath();
+    if (fillColor) {
+        ctx.fillStyle = fillColor;
+        ctx.fill();
+    }
+    if (strokeColor) {
+        ctx.strokeStyle = strokeColor;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+    }
+}
+
+const barValueLabelsPlugin = {
+    id: 'barValueLabels',
+    afterDatasetsDraw(chart, args, pluginOptions) {
+        if (!pluginOptions || !pluginOptions.enabled) return;
+        const { ctx, chartArea } = chart;
+        const isHorizontal = chart.config.options.indexAxis === 'y';
+        const suffix = pluginOptions.suffix || '';
+        const decimals = pluginOptions.decimals ?? null;
+        const insideStack = Boolean(pluginOptions.insideStack);
+        const topBoxes = pluginOptions.topBoxes || null;
+
+        ctx.save();
+        ctx.font = '700 10px "Sarabun", sans-serif';
+
+        chart.data.datasets.forEach((dataset, datasetIndex) => {
+            const meta = chart.getDatasetMeta(datasetIndex);
+            if (meta.hidden) return;
+
+            meta.data.forEach((bar, index) => {
+                const rawVal = dataset.data[index];
+                if (rawVal === null || rawVal === undefined || Number.isNaN(Number(rawVal))) return;
+                if (insideStack && Number(rawVal) === 0) return;
+
+                let displayVal = Number(rawVal);
+                if (decimals !== null) {
+                    displayVal = displayVal.toFixed(decimals);
+                } else {
+                    displayVal = Math.abs(displayVal).toLocaleString();
+                }
+
+                if (insideStack) {
+                    const barHeight = Math.abs(bar.base - bar.y);
+                    if (barHeight < 12) return;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillStyle = dataset.labelColor || '#ffffff';
+                    ctx.fillText(`${displayVal}${suffix}`, bar.x, (bar.y + bar.base) / 2);
+                } else if (isHorizontal) {
+                    ctx.textAlign = 'left';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillStyle = '#0f172a';
+                    const xPos = Math.min(bar.x + 4, chartArea.right - 36);
+                    ctx.fillText(`${displayVal}${suffix}`, xPos, bar.y);
+                } else {
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'bottom';
+                    ctx.fillStyle = '#0f172a';
+                    const yPos = Math.max(bar.y - 3, chartArea.top + 10);
+                    ctx.fillText(`${displayVal}${suffix}`, bar.x, yPos);
+                }
+            });
+        });
+
+        if (topBoxes && Array.isArray(topBoxes)) {
+            const numPoints = chart.data.labels.length;
+            for (let i = 0; i < numPoints; i++) {
+                const boxLabel = topBoxes[i];
+                if (boxLabel === undefined || boxLabel === null) continue;
+
+                let topY = chartArea.bottom;
+                let centerX = null;
+
+                chart.data.datasets.forEach((ds, dsIdx) => {
+                    const meta = chart.getDatasetMeta(dsIdx);
+                    if (meta.hidden || !meta.data[i]) return;
+                    const bar = meta.data[i];
+                    centerX = bar.x;
+                    if (bar.y < topY) topY = bar.y;
+                });
+
+                if (centerX === null) continue;
+
+                const textStr = String(boxLabel);
+                ctx.font = '700 10.5px "Sarabun", sans-serif';
+                const textWidth = ctx.measureText(textStr).width;
+                const boxW = textWidth + 12;
+                const boxH = 18;
+                const boxX = centerX - boxW / 2;
+                const boxY = Math.max(chartArea.top + 2, topY - boxH - 6);
+
+                drawRoundedBox(ctx, boxX, boxY, boxW, boxH, 4, '#0f172a', '#334155');
+                ctx.fillStyle = '#ffffff';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(textStr, centerX, boxY + boxH / 2 + 0.5);
+            }
+        }
+
+        ctx.restore();
+    }
+};
+Chart.register(barValueLabelsPlugin);
+
 let cancerRecords = [];
 let malePopData = null;
 let femalePopData = null;
 let generatedCSVRows = [];
+let generatedCSVFilename = 'export.csv';
+const chartInstances = {};
+let currentView = 'dashboard';
+
+function switchView(viewName) {
+    currentView = viewName;
+    document.getElementById('navDashboard').classList.toggle('active', viewName === 'dashboard');
+    document.getElementById('navIncidence').classList.toggle('active', viewName === 'incidence');
+    document.getElementById('navNumberCases').classList.toggle('active', viewName === 'numberCases');
+
+    document.getElementById('dashboardView').style.display = (viewName === 'dashboard') ? 'block' : 'none';
+    document.getElementById('incidenceView').style.display = (viewName === 'incidence') ? 'block' : 'none';
+    document.getElementById('numberCasesView').style.display = (viewName === 'numberCases') ? 'block' : 'none';
+
+    const isTableView = (viewName === 'incidence' || viewName === 'numberCases');
+    document.getElementById('dashSexGroup').style.display = (viewName === 'dashboard') ? 'block' : 'none';
+    document.getElementById('refreshDashBtn').style.display = (viewName === 'dashboard') ? 'inline-block' : 'none';
+
+    document.getElementById('tableSexGroup').style.display = isTableView ? 'block' : 'none';
+    document.getElementById('calcIncBtn').style.display = (viewName === 'incidence') ? 'inline-block' : 'none';
+    document.getElementById('calcNumBtn').style.display = (viewName === 'numberCases') ? 'inline-block' : 'none';
+    document.getElementById('exportBtn').style.display = isTableView ? 'inline-block' : 'none';
+    document.getElementById('exportBtn').disabled = true;
+
+    if (viewName === 'dashboard') {
+        renderDashboard();
+    } else if (viewName === 'incidence' && cancerRecords.length > 0) {
+        const sex = parseInt(document.getElementById('sexFilter').value, 10);
+        if ((sex === 1 && malePopData) || (sex === 2 && femalePopData)) {
+            calculateIncidence();
+        }
+    } else if (viewName === 'numberCases' && cancerRecords.length > 0) {
+        calculateNumberOfCases();
+    }
+}
+
+function onFilterChange() {
+    if (currentView === 'dashboard') {
+        renderDashboard();
+    }
+}
+
+function onTableSexChange() {
+    document.getElementById('exportBtn').disabled = true;
+}
 
 function initYearSelects(years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]) {
     const startSel = document.getElementById('startYear');
@@ -302,7 +717,9 @@ document.getElementById('cancerFile').addEventListener('change', function(e) {
         const idxDiag = headers.indexOf('DIAGD');
         const idxI10 = headers.indexOf('I10');
         const idxMor = headers.indexOf('MOR');
-        const idxBeh = headers.indexOf('BEH');
+        const idxBasis = headers.indexOf('BASIS');
+        const idxExt = headers.indexOf('EXT');
+        const idxStag = headers.indexOf('STAG') !== -1 ? headers.indexOf('STAG') : headers.indexOf('STG');
         const idxObsT = headers.indexOf('OBSOLETEFLAGTUMOURTABLE');
         const idxObsP = headers.indexOf('OBSOLETEFLAGPATIENTTABLE');
 
@@ -317,7 +734,6 @@ document.getElementById('cancerFile').addEventListener('change', function(e) {
         for (let i = 1; i < lines.length; i++) {
             const cols = lines[i].split(delimiter);
             if (cols.length <= Math.max(idxSex, idxAge, idxDiag, idxI10)) continue;
-
             if (idxObsT !== -1 && cols[idxObsT]?.trim() === '1') continue;
             if (idxObsP !== -1 && cols[idxObsP]?.trim() === '1') continue;
 
@@ -328,18 +744,22 @@ document.getElementById('cancerFile').addEventListener('change', function(e) {
             const year = diagStr.length >= 4 ? parseInt(diagStr.substring(0, 4), 10) : null;
             const i10 = (cols[idxI10]?.trim() || '').toUpperCase();
             const mor = idxMor !== -1 ? parseInt(cols[idxMor]?.trim(), 10) : null;
-            const beh = idxBeh !== -1 ? parseInt(cols[idxBeh]?.trim(), 10) : null;
+            const basis = idxBasis !== -1 ? parseInt(cols[idxBasis]?.trim(), 10) : null;
+            const extRaw = idxExt !== -1 ? cols[idxExt]?.trim() : '';
+            const stagRaw = idxStag !== -1 ? cols[idxStag]?.trim() : '';
 
             if (year && !isNaN(year)) yearSet.add(year);
-            cancerRecords.push({ sex, age, year, i10, mor, beh });
+            cancerRecords.push({ sex, age, year, i10, mor, basis, ext: extRaw, stag: stagRaw });
         }
 
         const sortedYears = Array.from(yearSet).sort((a, b) => a - b);
         if (sortedYears.length > 0) initYearSelects(sortedYears);
 
         const badge = document.getElementById('cancerStatus');
-        badge.textContent = `โหลดสำเร็จ: ${cancerRecords.length.toLocaleString()} รายการ (ปี ${sortedYears[0]} - ${sortedYears[sortedYears.length-1]})`;
+        badge.textContent = `โหลดสำเร็จ: ${cancerRecords.length.toLocaleString()} รายการ (${sortedYears[0]} - ${sortedYears[sortedYears.length-1]})`;
         badge.classList.add('ok');
+
+        renderDashboard();
     };
     reader.readAsText(file, 'UTF-8');
 });
@@ -364,6 +784,7 @@ document.getElementById('malePopFile').addEventListener('change', function(e) {
         const badge = document.getElementById('malePopStatus');
         badge.textContent = `โหลดสำเร็จ: ${json.length} กลุ่มอายุ`;
         badge.classList.add('ok');
+        renderDashboard();
     });
 });
 
@@ -375,6 +796,7 @@ document.getElementById('femalePopFile').addEventListener('change', function(e) 
         const badge = document.getElementById('femalePopStatus');
         badge.textContent = `โหลดสำเร็จ: ${json.length} กลุ่มอายุ`;
         badge.classList.add('ok');
+        renderDashboard();
     });
 });
 
@@ -411,6 +833,7 @@ function getAgeGroupIndex(age) {
 
 function getPopulationByAgeGroup(popRows, startYear, endYear) {
     const popByAge = new Array(18).fill(0);
+    if (!popRows) return popByAge;
     popRows.forEach((row, idx) => {
         const ageKey = Object.keys(row).find(k => k.toLowerCase().includes('age'));
         let ageIdx = idx;
@@ -429,34 +852,515 @@ function getPopulationByAgeGroup(popRows, startYear, endYear) {
     return popByAge;
 }
 
-function calculateIncidence() {
-    if (cancerRecords.length === 0) {
-        alert('กรุณานำเข้าไฟล์ข้อมูลทะเบียนมะเร็งก่อน');
-        return;
+function setChart(canvasId, config) {
+    if (chartInstances[canvasId]) {
+        chartInstances[canvasId].destroy();
     }
-    const sex = parseInt(document.getElementById('sexFilter').value, 10);
+    const ctx = document.getElementById(canvasId).getContext('2d');
+    chartInstances[canvasId] = new Chart(ctx, config);
+}
+
+function computeSexSiteMetrics(recordsForSex, popByAge) {
+    const stats = CANCER_SITES.map(s => ({
+        site: s.site,
+        icd: s.icd,
+        count: 0,
+        ageUnk: 0,
+        ageCounts: new Array(18).fill(0)
+    }));
+
+    recordsForSex.forEach(rec => {
+        const siteIdx = mapSiteIndex(rec, rec.sex);
+        if (siteIdx === -1) return;
+        stats[siteIdx].count++;
+        const ageIdx = getAgeGroupIndex(rec.age);
+        if (ageIdx === -1) stats[siteIdx].ageUnk++;
+        else stats[siteIdx].ageCounts[ageIdx]++;
+    });
+
+    return stats.map(st => {
+        let asrRaw = 0;
+        for (let i = 0; i < 18; i++) {
+            const rate = popByAge[i] > 0 ? (st.ageCounts[i] / popByAge[i]) * 100000 : 0;
+            asrRaw += (rate * SEGI_WEIGHTS[i]) / 100000;
+        }
+        const known = st.count - st.ageUnk;
+        const asr = (known > 0 && st.ageUnk > 0) ? asrRaw * (st.count / known) : asrRaw;
+        return { site: st.site, icd: st.icd, count: st.count, asr: Number(asr.toFixed(1)) };
+    });
+}
+
+function normalizeExtCategory(extVal) {
+    const v = String(extVal ?? '').trim();
+    if (v === '2') return '2';
+    if (v === '3') return '3';
+    if (v === '4') return '4';
+    if (v === '5') return '5';
+    return 'UNK';
+}
+
+function normalizeStagCategory(stagVal) {
+    const v = String(stagVal ?? '').trim();
+    if (v === '1') return '1';
+    if (v === '2') return '2';
+    if (v === '3') return '3';
+    if (v === '4') return '4';
+    return 'UNK';
+}
+
+function build100PercentStackedChart(canvasId, yearsList, recordsList, categoryFn, categoriesConfig) {
+    const datasets = categoriesConfig.map(cfg => {
+        const pctSeries = yearsList.map(yr => {
+            const yrRecs = recordsList.filter(r => r.year === yr);
+            if (yrRecs.length === 0) return 0;
+            const matched = yrRecs.filter(r => categoryFn(r) === cfg.key).length;
+            return Number(((matched / yrRecs.length) * 100).toFixed(1));
+        });
+
+        return {
+            label: cfg.label,
+            data: pctSeries,
+            backgroundColor: cfg.color,
+            labelColor: cfg.labelColor || '#ffffff'
+        };
+    });
+
+    setChart(canvasId, {
+        type: 'bar',
+        data: {
+            labels: yearsList,
+            datasets
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: { stacked: true },
+                y: {
+                    stacked: true,
+                    beginAtZero: true,
+                    max: 100,
+                    ticks: { callback: v => v + '%' }
+                }
+            },
+            plugins: {
+                barValueLabels: {
+                    enabled: true,
+                    insideStack: true,
+                    suffix: '%',
+                    decimals: 1
+                },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => `${ctx.dataset.label}: ${Number(ctx.raw).toFixed(1)}%`
+                    }
+                }
+            }
+        }
+    });
+}
+
+function buildPercentagePieChart(canvasId, recordsList, categoryFn, categoriesConfig) {
+    const total = recordsList.length;
+    const counts = categoriesConfig.map(cfg => recordsList.filter(r => categoryFn(r) === cfg.key).length);
+
+    const labels = categoriesConfig.map((cfg, idx) => {
+        const cnt = counts[idx];
+        const pctVal = total > 0 ? ((cnt / total) * 100).toFixed(1) : '0.0';
+        return `${cfg.label} (${cnt.toLocaleString()} ราย, ${pctVal}%)`;
+    });
+
+    setChart(canvasId, {
+        type: 'doughnut',
+        data: {
+            labels,
+            datasets: [{
+                data: counts,
+                backgroundColor: categoriesConfig.map(cfg => cfg.color)
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                barValueLabels: { enabled: false },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => {
+                            const val = Number(ctx.raw) || 0;
+                            const p = total > 0 ? ((val / total) * 100).toFixed(1) : '0.0';
+                            return `${ctx.label.split(' (')[0]}: ${val.toLocaleString()} ราย (${p}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function renderDashboard() {
     const startYear = parseInt(document.getElementById('startYear').value, 10);
     const endYear = parseInt(document.getElementById('endYear').value, 10);
+    const dashSex = document.getElementById('dashSexFilter').value;
 
-    if (startYear > endYear) {
-        alert('ปีเริ่มต้นต้องน้อยกว่าหรือเท่ากับปีที่สิ้นสุด');
-        return;
+    const yearFiltered = cancerRecords.filter(r => r.year && r.year >= startYear && r.year <= endYear);
+    const activeFiltered = (dashSex === 'all')
+        ? yearFiltered
+        : yearFiltered.filter(r => String(r.sex) === dashSex);
+
+    const maleRecs = activeFiltered.filter(r => r.sex === 1);
+    const femaleRecs = activeFiltered.filter(r => r.sex === 2);
+
+    const malePopAge = (dashSex === '2') ? new Array(18).fill(0) : getPopulationByAgeGroup(malePopData, startYear, endYear);
+    const femalePopAge = (dashSex === '1') ? new Array(18).fill(0) : getPopulationByAgeGroup(femalePopData, startYear, endYear);
+
+    const malePopSum = malePopAge.reduce((a, b) => a + b, 0);
+    const femalePopSum = femalePopAge.reduce((a, b) => a + b, 0);
+    const totalPopSum = malePopSum + femalePopSum;
+
+    const totalCases = activeFiltered.length;
+    const maleCases = maleRecs.length;
+    const femaleCases = femaleRecs.length;
+    const malePct = totalCases > 0 ? ((maleCases / totalCases) * 100).toFixed(1) : '0.0';
+    const femalePct = totalCases > 0 ? ((femaleCases / totalCases) * 100).toFixed(1) : '0.0';
+
+    const sexText = dashSex === '1' ? 'เฉพาะเพศชาย' : (dashSex === '2' ? 'เฉพาะเพศหญิง' : 'ทั้งหมด');
+
+    document.getElementById('kpiTotalCases').textContent = totalCases.toLocaleString();
+    document.getElementById('kpiYearLabel').textContent = `ช่วงปี: ${startYear} - ${endYear} (${sexText})`;
+    document.getElementById('kpiMaleCases').textContent = maleCases.toLocaleString();
+    document.getElementById('kpiMalePct').textContent = `${malePct}% ของผู้ป่วยตามตัวกรอง`;
+    document.getElementById('kpiFemaleCases').textContent = femaleCases.toLocaleString();
+    document.getElementById('kpiFemalePct').textContent = `${femalePct}% ของผู้ป่วยตามตัวกรอง`;
+    document.getElementById('kpiTotalPop').textContent = Math.round(totalPopSum).toLocaleString();
+    document.getElementById('kpiPopBreak').textContent = `ชาย: ${Math.round(malePopSum).toLocaleString()} | หญิง: ${Math.round(femalePopSum).toLocaleString()}`;
+
+    const maleAgeCases = new Array(18).fill(0);
+    const femaleAgeCases = new Array(18).fill(0);
+    maleRecs.forEach(r => { const idx = getAgeGroupIndex(r.age); if (idx >= 0) maleAgeCases[idx]++; });
+    femaleRecs.forEach(r => { const idx = getAgeGroupIndex(r.age); if (idx >= 0) femaleAgeCases[idx]++; });
+
+    const pyramidLabels = [...AGE_GROUPS_LABELS].reverse();
+    const pyramidMalePop = [...malePopAge].reverse().map(v => -Math.round(v));
+    const pyramidFemalePop = [...femalePopAge].reverse().map(v => Math.round(v));
+
+    setChart('pyramidChart', {
+        type: 'bar',
+        data: {
+            labels: pyramidLabels,
+            datasets: [
+                { label: 'เพศชาย (Male)', data: pyramidMalePop, backgroundColor: '#2563eb' },
+                { label: 'เพศหญิง (Female)', data: pyramidFemalePop, backgroundColor: '#ec4899' }
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+            scales: {
+                x: { stacked: true, ticks: { callback: v => Math.abs(v).toLocaleString() } },
+                y: { stacked: true }
+            },
+            plugins: {
+                barValueLabels: { enabled: false },
+                tooltip: {
+                    callbacks: { label: ctx => `${ctx.dataset.label}: ${Math.abs(ctx.raw).toLocaleString()} คน` }
+                }
+            }
+        }
+    });
+
+    setChart('stackedAgeChart', {
+        type: 'bar',
+        data: {
+            labels: AGE_GROUPS_LABELS,
+            datasets: [
+                { label: 'เพศชาย (Male)', data: maleAgeCases, backgroundColor: '#3b82f6' },
+                { label: 'เพศหญิง (Female)', data: femaleAgeCases, backgroundColor: '#f472b6' }
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } },
+            plugins: { barValueLabels: { enabled: false } }
+        }
+    });
+
+    setChart('sexPieChart', {
+        type: 'doughnut',
+        data: {
+            labels: [
+                `เพศชาย (${maleCases.toLocaleString()} ราย, ${malePct}%)`,
+                `เพศหญิง (${femaleCases.toLocaleString()} ราย, ${femalePct}%)`
+            ],
+            datasets: [{
+                data: [maleCases, femaleCases],
+                backgroundColor: ['#2563eb', '#ec4899']
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { barValueLabels: { enabled: false } }
+        }
+    });
+
+    const maleSiteMetrics = computeSexSiteMetrics(maleRecs, malePopAge);
+    const femaleSiteMetrics = computeSexSiteMetrics(femaleRecs, femalePopAge);
+
+    const top10MaleCount = [...maleSiteMetrics].sort((a, b) => b.count - a.count).slice(0, 10);
+    const top10FemaleCount = [...femaleSiteMetrics].sort((a, b) => b.count - a.count).slice(0, 10);
+    const top10MaleAsr = [...maleSiteMetrics].sort((a, b) => b.asr - a.asr).slice(0, 10);
+    const top10FemaleAsr = [...femaleSiteMetrics].sort((a, b) => b.asr - a.asr).slice(0, 10);
+
+    function makeHorizontalBar(canvasId, items, valueKey, labelTitle, color, decimals = null) {
+        setChart(canvasId, {
+            type: 'bar',
+            data: {
+                labels: items.map(x => `${x.site} (${x.icd})`),
+                datasets: [{ label: labelTitle, data: items.map(x => x[valueKey]), backgroundColor: color }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+                layout: { padding: { right: 38 } },
+                scales: { x: { beginAtZero: true } },
+                plugins: {
+                    barValueLabels: { enabled: true, decimals }
+                }
+            }
+        });
     }
 
-    const popSource = (sex === 1) ? malePopData : femalePopData;
-    if (!popSource) {
-        alert(`กรุณานำเข้าไฟล์ประชากร${sex === 1 ? 'เพศชาย' : 'เพศหญิง'}ก่อน`);
-        return;
-    }
+    makeHorizontalBar('top10MaleCountChart', top10MaleCount, 'count', 'จำนวนราย (Cases)', '#1d4ed8', 0);
+    makeHorizontalBar('top10FemaleCountChart', top10FemaleCount, 'count', 'จำนวนราย (Cases)', '#db2777', 0);
+    makeHorizontalBar('top10MaleAsrChart', top10MaleAsr, 'asr', 'ASR ต่อ 100,000', '#0284c7', 1);
+    makeHorizontalBar('top10FemaleAsrChart', top10FemaleAsr, 'asr', 'ASR ต่อ 100,000', '#e11d48', 1);
 
-    const popByAge = getPopulationByAgeGroup(popSource, startYear, endYear);
-    const totalPop = popByAge.reduce((a, b) => a + b, 0);
+    const yearsList = [];
+    for (let y = startYear; y <= endYear; y++) yearsList.push(y);
 
-    if (totalPop <= 0) {
-        alert(`ไม่พบข้อมูลประชากรในช่วงปี ${startYear} - ${endYear} ในไฟล์ประชากร`);
-        return;
-    }
+    // กราฟ Stage by extent (100% Stacked Bar Chart)
+    build100PercentStackedChart(
+        'stageExtentChart',
+        yearsList,
+        activeFiltered,
+        r => normalizeExtCategory(r.ext),
+        [
+            { key: '2', label: '2 = Localize', color: '#10b981' },
+            { key: '3', label: '3 = Direct extention', color: '#3b82f6' },
+            { key: '4', label: '4 = Reginal node extention', color: '#f59e0b' },
+            { key: '5', label: '5 = Metastasis', color: '#ef4444' },
+            { key: 'UNK', label: 'Unknown', color: '#94a3b8' }
+        ]
+    );
 
+    // กราฟ Stage by TNM Stage (100% กราฟวงกลม ร้อยละของ STAG)
+    buildPercentagePieChart(
+        'stageTnmChart',
+        activeFiltered,
+        r => normalizeStagCategory(r.stag),
+        [
+            { key: '1', label: '1 = Stage 1', color: '#10b981' },
+            { key: '2', label: '2 = Stage 2', color: '#3b82f6' },
+            { key: '3', label: '3 = Stage 3', color: '#f59e0b' },
+            { key: '4', label: '4 = Stage 4', color: '#ef4444' },
+            { key: 'UNK', label: 'Unknown', color: '#94a3b8' }
+        ]
+    );
+
+    const isHV = b => [5, 6, 7, 8].includes(b);
+    const isDCO = b => b === 0;
+    const pct = (num, den) => den > 0 ? Number(((num / den) * 100).toFixed(1)) : 0;
+
+    const hvCountAll = activeFiltered.filter(r => isHV(r.basis)).length;
+    const hvCountMale = maleRecs.filter(r => isHV(r.basis)).length;
+    const hvCountFemale = femaleRecs.filter(r => isHV(r.basis)).length;
+
+    const dcoCountAll = activeFiltered.filter(r => isDCO(r.basis)).length;
+    const dcoCountMale = maleRecs.filter(r => isDCO(r.basis)).length;
+    const dcoCountFemale = femaleRecs.filter(r => isDCO(r.basis)).length;
+
+    const hvAll = pct(hvCountAll, totalCases);
+    const hvMale = pct(hvCountMale, maleCases);
+    const hvFemale = pct(hvCountFemale, femaleCases);
+
+    const dcoAll = pct(dcoCountAll, totalCases);
+    const dcoMale = pct(dcoCountMale, maleCases);
+    const dcoFemale = pct(dcoCountFemale, femaleCases);
+
+    document.getElementById('qcOverallHvVal').textContent = `${hvAll.toFixed(1)}%`;
+    document.getElementById('qcOverallHvSub').textContent = `${hvCountAll.toLocaleString()} / ${totalCases.toLocaleString()} ราย`;
+    document.getElementById('qcOverallDcoVal').textContent = `${dcoAll.toFixed(1)}%`;
+    document.getElementById('qcOverallDcoSub').textContent = `${dcoCountAll.toLocaleString()} / ${totalCases.toLocaleString()} ราย`;
+
+    setChart('qcHvGenderChart', {
+        type: 'bar',
+        data: {
+            labels: ['เพศชาย (Male)', 'เพศหญิง (Female)'],
+            datasets: [{
+                label: 'HV% (BASIS 5-8)',
+                data: [hvMale, hvFemale],
+                backgroundColor: ['#2563eb', '#ec4899']
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: { y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } } },
+            plugins: {
+                legend: { display: false },
+                barValueLabels: { enabled: true, suffix: '%', decimals: 1 }
+            }
+        }
+    });
+
+    setChart('qcDcoGenderChart', {
+        type: 'bar',
+        data: {
+            labels: ['เพศชาย (Male)', 'เพศหญิง (Female)'],
+            datasets: [{
+                label: 'DCO% (BASIS 0)',
+                data: [dcoMale, dcoFemale],
+                backgroundColor: ['#3b82f6', '#f472b6']
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: { y: { beginAtZero: true, max: 20, ticks: { callback: v => v + '%' } } },
+            plugins: {
+                legend: { display: false },
+                barValueLabels: { enabled: true, suffix: '%', decimals: 1 }
+            }
+        }
+    });
+
+    const annualTotalCounts = yearsList.map(y => activeFiltered.filter(r => r.year === y).length);
+    const annualMaleCounts = yearsList.map(y => maleRecs.filter(r => r.year === y).length);
+    const annualFemaleCounts = yearsList.map(y => femaleRecs.filter(r => r.year === y).length);
+
+    const annualHvAll = yearsList.map(y => {
+        const yrRecs = activeFiltered.filter(r => r.year === y);
+        return pct(yrRecs.filter(r => isHV(r.basis)).length, yrRecs.length);
+    });
+    const annualHvMale = yearsList.map(y => {
+        const yrRecs = maleRecs.filter(r => r.year === y);
+        return pct(yrRecs.filter(r => isHV(r.basis)).length, yrRecs.length);
+    });
+    const annualHvFemale = yearsList.map(y => {
+        const yrRecs = femaleRecs.filter(r => r.year === y);
+        return pct(yrRecs.filter(r => isHV(r.basis)).length, yrRecs.length);
+    });
+
+    const annualDcoAll = yearsList.map(y => {
+        const yrRecs = activeFiltered.filter(r => r.year === y);
+        return pct(yrRecs.filter(r => isDCO(r.basis)).length, yrRecs.length);
+    });
+    const annualDcoMale = yearsList.map(y => {
+        const yrRecs = maleRecs.filter(r => r.year === y);
+        return pct(yrRecs.filter(r => isDCO(r.basis)).length, yrRecs.length);
+    });
+    const annualDcoFemale = yearsList.map(y => {
+        const yrRecs = femaleRecs.filter(r => r.year === y);
+        return pct(yrRecs.filter(r => isDCO(r.basis)).length, yrRecs.length);
+    });
+
+    setChart('annualCasesChart', {
+        type: 'bar',
+        data: {
+            labels: yearsList,
+            datasets: [
+                { label: 'เพศชาย (Male)', data: annualMaleCounts, backgroundColor: '#2563eb' },
+                { label: 'เพศหญิง (Female)', data: annualFemaleCounts, backgroundColor: '#ec4899' }
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            layout: { padding: { top: 28 } },
+            scales: {
+                x: { stacked: true },
+                y: { stacked: true, beginAtZero: true }
+            },
+            plugins: {
+                barValueLabels: {
+                    enabled: true,
+                    insideStack: true,
+                    decimals: 0,
+                    topBoxes: annualTotalCounts.map(v => `รวม: ${v.toLocaleString()}`)
+                }
+            }
+        }
+    });
+
+    setChart('hvChart', {
+        type: 'bar',
+        data: {
+            labels: yearsList,
+            datasets: [
+                { label: 'HV% ชาย (Male)', data: annualHvMale, backgroundColor: '#2563eb' },
+                { label: 'HV% หญิง (Female)', data: annualHvFemale, backgroundColor: '#ec4899' }
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            layout: { padding: { top: 28 } },
+            scales: {
+                x: { stacked: true },
+                y: { stacked: true, beginAtZero: true, max: 200, ticks: { callback: v => v + '%' } }
+            },
+            plugins: {
+                barValueLabels: {
+                    enabled: true,
+                    insideStack: true,
+                    suffix: '%',
+                    decimals: 1,
+                    topBoxes: annualHvAll.map(v => `รวม: ${v.toFixed(1)}%`)
+                }
+            }
+        }
+    });
+
+    setChart('dcoChart', {
+        type: 'bar',
+        data: {
+            labels: yearsList,
+            datasets: [
+                { label: 'DCO% ชาย (Male)', data: annualDcoMale, backgroundColor: '#2563eb' },
+                { label: 'DCO% หญิง (Female)', data: annualDcoFemale, backgroundColor: '#ec4899' }
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            layout: { padding: { top: 28 } },
+            scales: {
+                x: { stacked: true },
+                y: { stacked: true, beginAtZero: true, max: 20, ticks: { callback: v => v + '%' } }
+            },
+            plugins: {
+                barValueLabels: {
+                    enabled: true,
+                    insideStack: true,
+                    suffix: '%',
+                    decimals: 1,
+                    topBoxes: annualDcoAll.map(v => `รวม: ${v.toFixed(1)}%`)
+                }
+            }
+        }
+    });
+
+    setChart('qcTrendChart', {
+        type: 'line',
+        data: {
+            labels: yearsList,
+            datasets: [
+                { label: 'HV% รวม (BASIS 5-8)', data: annualHvAll, borderColor: '#059669', backgroundColor: '#059669', tension: 0.25 },
+                { label: 'DCO% รวม (BASIS 0)', data: annualDcoAll, borderColor: '#dc2626', backgroundColor: '#dc2626', tension: 0.25 }
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: { y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } } },
+            plugins: { barValueLabels: { enabled: false } }
+        }
+    });
+}
+
+function buildSiteCountsAndTotals(sex, startYear, endYear) {
     const siteStats = CANCER_SITES.map(s => ({
         site: s.site,
         icd: s.icd,
@@ -497,6 +1401,38 @@ function calculateIncidence() {
         }
     });
 
+    return { siteStats, allSitesRow, allButC44Row };
+}
+
+function calculateIncidence() {
+    if (cancerRecords.length === 0) {
+        alert('กรุณานำเข้าไฟล์ข้อมูลทะเบียนมะเร็งก่อน');
+        return;
+    }
+    const sex = parseInt(document.getElementById('sexFilter').value, 10);
+    const startYear = parseInt(document.getElementById('startYear').value, 10);
+    const endYear = parseInt(document.getElementById('endYear').value, 10);
+
+    if (startYear > endYear) {
+        alert('ปีเริ่มต้นต้องน้อยกว่าหรือเท่ากับปีที่สิ้นสุด');
+        return;
+    }
+
+    const popSource = (sex === 1) ? malePopData : femalePopData;
+    if (!popSource) {
+        alert(`กรุณานำเข้าไฟล์ประชากร${sex === 1 ? 'เพศชาย' : 'เพศหญิง'}ก่อน`);
+        return;
+    }
+
+    const popByAge = getPopulationByAgeGroup(popSource, startYear, endYear);
+    const totalPop = popByAge.reduce((a, b) => a + b, 0);
+
+    if (totalPop <= 0) {
+        alert(`ไม่พบข้อมูลประชากรในช่วงปี ${startYear} - ${endYear} ในไฟล์ประชากร`);
+        return;
+    }
+
+    const { siteStats, allSitesRow, allButC44Row } = buildSiteCountsAndTotals(sex, startYear, endYear);
     const totalCasesNoSkin = allButC44Row.allAges || 1;
 
     function computeMetrics(rowObj) {
@@ -539,11 +1475,11 @@ function calculateIncidence() {
         computeMetrics(allButC44Row)
     ];
 
-    renderTable(finalRows, sex, startYear, endYear, totalPop, allSitesRow.allAges);
+    renderIncidenceTable(finalRows, sex, startYear, endYear, totalPop, allSitesRow.allAges);
 }
 
-function renderTable(rows, sex, startYear, endYear, totalPop, totalCases) {
-    const tbody = document.getElementById('tableBody');
+function renderIncidenceTable(rows, sex, startYear, endYear, totalPop, totalCases) {
+    const tbody = document.getElementById('incTableBody');
     tbody.innerHTML = '';
     generatedCSVRows = [];
 
@@ -582,23 +1518,111 @@ function renderTable(rows, sex, startYear, endYear, totalPop, totalCases) {
         tbody.appendChild(tr);
     });
 
-    const summaryBar = document.getElementById('summaryBar');
-    summaryBar.innerHTML = `
+    const sexLabel = sex === 1 ? 'Male' : 'Female';
+    generatedCSVFilename = `Inc_CMR${startYear}t${endYear}${sexLabel}.csv`;
+
+    document.getElementById('incSummaryBar').innerHTML = `
         <span>เพศที่เลือก: <strong>${sex === 1 ? 'ชาย (Male)' : 'หญิง (Female)'}</strong></span>
         <span>ช่วงปีที่วินิจฉัย: <strong>${startYear} - ${endYear}</strong></span>
         <span>จำนวนผู้ป่วยทั้งหมด (All sites): <strong>${totalCases.toLocaleString()} ราย</strong></span>
         <span>ประชากรรวมช่วงปีที่เลือก (Person-years): <strong>${Math.round(totalPop).toLocaleString()} คน</strong></span>
     `;
 
-    document.getElementById('resultPanel').style.display = 'block';
+    document.getElementById('incResultPanel').style.display = 'block';
+    document.getElementById('exportBtn').disabled = false;
+}
+
+function calculateNumberOfCases() {
+    if (cancerRecords.length === 0) {
+        alert('กรุณานำเข้าไฟล์ข้อมูลทะเบียนมะเร็งก่อน');
+        return;
+    }
+    const sex = parseInt(document.getElementById('sexFilter').value, 10);
+    const startYear = parseInt(document.getElementById('startYear').value, 10);
+    const endYear = parseInt(document.getElementById('endYear').value, 10);
+
+    if (startYear > endYear) {
+        alert('ปีเริ่มต้นต้องน้อยกว่าหรือเท่ากับปีที่สิ้นสุด');
+        return;
+    }
+
+    const { siteStats, allSitesRow, allButC44Row } = buildSiteCountsAndTotals(sex, startYear, endYear);
+    const denomNoSkin = allButC44Row.allAges || 1;
+
+    function formatCaseRow(rowObj, isAllButC44 = false) {
+        const pctVal = isAllButC44 ? 100.0 : Number(((rowObj.allAges / denomNoSkin) * 100).toFixed(1));
+        return {
+            site: rowObj.site,
+            allAges: rowObj.allAges,
+            ageUnk: rowObj.ageUnk,
+            ageCounts: rowObj.ageCounts,
+            pct: pctVal.toFixed(1),
+            icd: rowObj.icd
+        };
+    }
+
+    const filteredSites = siteStats.filter(s => !s.sexOnly || s.sexOnly === sex);
+    const finalRows = [
+        ...filteredSites.map(s => formatCaseRow(s, false)),
+        formatCaseRow(allSitesRow, false),
+        formatCaseRow(allButC44Row, true)
+    ];
+
+    renderNumberCasesTable(finalRows, sex, startYear, endYear, allSitesRow.allAges, allButC44Row.allAges);
+}
+
+function renderNumberCasesTable(rows, sex, startYear, endYear, totalAllSites, totalNoC44) {
+    const tbody = document.getElementById('numTableBody');
+    tbody.innerHTML = '';
+    generatedCSVRows = [];
+
+    const headerCSV = [
+        'SITE','ALL AGES','AGE UNK','0-','5-','10-','15-','20-','25-','30-','35-',
+        '40-','45-','50-','55-','60-','65-','70-','75-','80-','85+',
+        '(%)','ICD (10th)'
+    ];
+    generatedCSVRows.push(headerCSV);
+
+    rows.forEach(r => {
+        const isTotal = (r.icd === 'ALL' || r.icd === 'ALLbC44');
+        const tr = document.createElement('tr');
+        if (isTotal) tr.className = 'total-row';
+
+        const cells = [
+            r.site,
+            r.allAges,
+            r.ageUnk,
+            ...r.ageCounts,
+            r.pct,
+            r.icd
+        ];
+
+        generatedCSVRows.push(cells);
+
+        cells.forEach(val => {
+            const td = document.createElement('td');
+            td.textContent = val;
+            tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+    });
+
+    const sexLabel = sex === 1 ? 'NumberMale.csv' : 'NumberFemale.csv';
+    generatedCSVFilename = sexLabel;
+
+    document.getElementById('numSummaryBar').innerHTML = `
+        <span>เพศที่เลือก: <strong>${sex === 1 ? 'เพศชาย (NumberMale)' : 'เพศหญิง (NumberFemale)'}</strong></span>
+        <span>ช่วงปีที่วินิจฉัย: <strong>${startYear} - ${endYear}</strong></span>
+        <span>All sites: <strong>${totalAllSites.toLocaleString()} ราย</strong></span>
+        <span>All sites but C44: <strong>${totalNoC44.toLocaleString()} ราย</strong></span>
+    `;
+
+    document.getElementById('numResultPanel').style.display = 'block';
     document.getElementById('exportBtn').disabled = false;
 }
 
 function exportCSV() {
     if (generatedCSVRows.length === 0) return;
-    const sexLabel = document.getElementById('sexFilter').value === '1' ? 'Male' : 'Female';
-    const startYear = document.getElementById('startYear').value;
-    const endYear = document.getElementById('endYear').value;
 
     const csvContent = "\uFEFF" + generatedCSVRows.map(row =>
         row.map(cell => {
@@ -611,11 +1635,14 @@ function exportCSV() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `Inc_CMR${startYear}t${endYear}${sexLabel}.csv`;
+    link.download = generatedCSVFilename;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
 }
+
+// วาดกราฟเริ่มต้น
+renderDashboard();
 </script>
 </body>
 </html>
