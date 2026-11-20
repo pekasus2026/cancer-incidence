@@ -2191,10 +2191,9 @@ function renderDiseaseDetail() {
         ]
     );
 
-    // 6. กราฟแท่งแสดงจำนวน Cases รายปี (ชายและหญิงอยู่ในแท่งเดียวกัน)
+    // 6. กราฟแท่งแสดงจำนวน Cases รายปี (ชายและหญิงอยู่ในแท่งเดียวกัน - ไม่มีกล่องผลรวมด้านบน)
     const disAnnualMaleCounts = yearsList.map(y => maleRecs.filter(r => r.year === y).length);
     const disAnnualFemaleCounts = yearsList.map(y => femaleRecs.filter(r => r.year === y).length);
-    const disAnnualTotalCounts = yearsList.map((_, idx) => disAnnualMaleCounts[idx] + disAnnualFemaleCounts[idx]);
 
     setChart('disAnnualCasesChart', {
         type: 'bar',
@@ -2208,7 +2207,6 @@ function renderDiseaseDetail() {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            layout: { padding: { top: 28 } },
             scales: {
                 x: { stacked: true },
                 y: { stacked: true, beginAtZero: true }
@@ -2217,14 +2215,13 @@ function renderDiseaseDetail() {
                 barValueLabels: {
                     enabled: true,
                     insideStack: true,
-                    decimals: 0,
-                    topBoxes: disAnnualTotalCounts.map(v => `รวม: ${v.toLocaleString()}`)
+                    decimals: 0
                 }
             }
         }
     });
 
-    // 7. กราฟแท่งแสดง ASR รายปี (ชายและหญิงอยู่ในแท่งเดียวกัน)
+    // 7. กราฟแท่งแสดง ASR รายปี (ชายและหญิงอยู่ในแท่งเดียวกัน - ไม่มีกล่องผลรวมด้านบน)
     const disAnnualMaleAsr = yearsList.map(y => {
         const yMaleRecs = maleRecs.filter(r => r.year === y);
         const yMalePop = getPopulationByAgeGroup(malePopData, y, y);
@@ -2236,10 +2233,6 @@ function renderDiseaseDetail() {
         const yFemalePop = getPopulationByAgeGroup(femalePopData, y, y);
         return computeAsrFromRecords(yFemaleRecs, yFemalePop);
     });
-
-    const disAnnualTotalAsr = yearsList.map((_, idx) =>
-        Number((disAnnualMaleAsr[idx] + disAnnualFemaleAsr[idx]).toFixed(1))
-    );
 
     setChart('disAnnualAsrChart', {
         type: 'bar',
@@ -2253,7 +2246,6 @@ function renderDiseaseDetail() {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            layout: { padding: { top: 28 } },
             scales: {
                 x: { stacked: true },
                 y: { stacked: true, beginAtZero: true }
@@ -2262,8 +2254,7 @@ function renderDiseaseDetail() {
                 barValueLabels: {
                     enabled: true,
                     insideStack: true,
-                    decimals: 1,
-                    topBoxes: disAnnualTotalAsr.map(v => `รวม: ${v.toFixed(1)}`)
+                    decimals: 1
                 }
             }
         }
