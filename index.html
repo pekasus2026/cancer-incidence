@@ -181,16 +181,16 @@
         <small>Dashboard, Incidence, Cases & QC</small>
     </div>
     <button id="navDashboard" class="nav-btn active" onclick="switchView('dashboard')">
-        <span>1. หน้าหลัก (Dashboard)</span>
+        <span>1. Data Visualization</span>
     </button>
     <button id="navIncidence" class="nav-btn" onclick="switchView('incidence')">
-        <span>2. คำนวณตาราง Incidence</span>
+        <span>2. ตาราง Incidence</span>
     </button>
     <button id="navNumberCases" class="nav-btn" onclick="switchView('numberCases')">
-        <span>3. คำนวณตาราง Number of Cases</span>
+        <span>3. ตาราง Number of Cases</span>
     </button>
     <button id="navDataQuality" class="nav-btn" onclick="switchView('dataQuality')">
-        <span>4. คำนวณตาราง Data Quality</span>
+        <span>4. ตาราง Data Quality</span>
     </button>
     <div class="sidebar-note">
         * เลือกช่วงปีและเพศ หรือสลับเมนูด้านซ้ายเพื่อดู Dashboard, ตาราง Incidence, ตาราง Number of Cases และตาราง Data Quality
@@ -388,7 +388,7 @@
     <!-- มุมมองที่ 2: ตาราง Incidence -->
     <div id="incidenceView" style="display: none;">
         <div class="table-header-banner">
-            <h2>โปรแกรมคำนวณตาราง Cancer Incidence &amp; ASR (Segi’s World Standard)</h2>
+            <h2>ตาราง Cancer Incidence &amp; ASR (Segi’s World Standard)</h2>
             <p>คำนวณอัตราอุบัติการณ์โรคมะเร็งจำแนกตามกลุ่มอายุ (Age-Specific Incidence Rate), Crude Rate, Cumulative Risk (0-64, 0-74) และ ASR โดยใช้ประชากรมาตรฐานโลก Segi’s World Standard Population</p>
         </div>
 
@@ -435,6 +435,9 @@
 
     <!-- มุมมองที่ 3: ตาราง Number of Cases (โครงสร้างตาม NumberMale.csv / NumberFemale.csv) -->
     <div id="numberCasesView" style="display: none;">
+		<div class="table-header-banner">
+            <h2>ตาราง Number of cases</h2>
+        </div>
         <div id="numResultPanel" class="panel" style="display: none;">
             <div id="numSummaryBar" class="summary-bar"></div>
             <div class="table-wrapper">
@@ -474,6 +477,9 @@
 
     <!-- มุมมองที่ 4: ตาราง Data Quality (โครงสร้างตาม QC-Males.csv / QC-Females.csv) -->
     <div id="dataQualityView" style="display: none;">
+		<div class="table-header-banner">
+            <h2>ตาราง Data Quality Indicator</h2>
+        </div>
         <div id="qcResultPanel" class="panel" style="display: none;">
             <div id="qcSummaryBar" class="summary-bar"></div>
             <div class="table-wrapper">
