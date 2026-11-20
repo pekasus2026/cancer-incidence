@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cancer Registry Dashboard & Incidence Calculator</title>
-    <!-- SheetJS สำหรับอ่านไฟล์ Excel (.xlsx / .xls) -->
+    <!-- SheetJS สำหรับอ่านไฟล์ Excel (.xlsx / .xls) และไฟล์ตาราง -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
     <!-- Chart.js สำหรับสร้างกราฟต่างๆ -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -51,6 +51,26 @@
             background: var(--card); border: 1px solid var(--border);
             border-radius: 10px; padding: 14px 16px; margin-bottom: 14px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .table-header-banner {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--sidebar-active) 100%);
+            color: #ffffff;
+            padding: 14px 18px;
+            border-radius: 10px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 6px rgba(30, 58, 138, 0.25);
+        }
+        .table-header-banner h2 {
+            margin: 0 0 4px 0;
+            font-size: 1.08rem;
+            font-weight: 700;
+            color: #ffffff;
+        }
+        .table-header-banner p {
+            margin: 0;
+            font-size: 0.82rem;
+            color: #e2e8f0;
+            line-height: 1.45;
         }
         .section-title {
             margin: 18px 0 10px; font-size: 1.08rem; font-weight: 700; color: #0f172a;
@@ -183,18 +203,18 @@
     <div class="panel">
         <div class="grid-3">
             <div class="form-group">
-                <label>1. ไฟล์ทะเบียนมะเร็ง (CMR .txt / .tsv / .csv)</label>
-                <input type="file" id="cancerFile" accept=".txt,.tsv,.csv">
+                <label>1. ไฟล์ทะเบียนมะเร็ง (.txt, .xls, .xlsx, .csv)</label>
+                <input type="file" id="cancerFile" accept=".txt,.xls,.xlsx,.csv">
                 <div id="cancerStatus" class="status-badge">ยังไม่ได้เลือกไฟล์</div>
             </div>
             <div class="form-group">
-                <label>2. ไฟล์ประชากรเพศชาย (MalePop .xlsx / .xls / .csv)</label>
-                <input type="file" id="malePopFile" accept=".xlsx,.xls,.csv">
+                <label>2. ไฟล์ประชากรเพศชาย (.txt, .xls, .xlsx, .csv)</label>
+                <input type="file" id="malePopFile" accept=".txt,.xls,.xlsx,.csv">
                 <div id="malePopStatus" class="status-badge">ยังไม่ได้เลือกไฟล์</div>
             </div>
             <div class="form-group">
-                <label>3. ไฟล์ประชากรเพศหญิง (FemalePop .xlsx / .xls / .csv)</label>
-                <input type="file" id="femalePopFile" accept=".xlsx,.xls,.csv">
+                <label>3. ไฟล์ประชากรเพศหญิง (.txt, .xls, .xlsx, .csv)</label>
+                <input type="file" id="femalePopFile" accept=".txt,.xls,.xlsx,.csv">
                 <div id="femalePopStatus" class="status-badge">ยังไม่ได้เลือกไฟล์</div>
             </div>
         </div>
@@ -359,7 +379,7 @@
                 <div class="chart-box"><canvas id="dcoChart"></canvas></div>
             </div>
             <div class="chart-card">
-                <h4>แนวโน้ม HV% และ DCO% รวมรายปี (%)</h4>
+                <h4>แนวโน้ม HV% และ DCO% รวมรายปี</h4>
                 <div class="chart-box"><canvas id="qcTrendChart"></canvas></div>
             </div>
         </div>
@@ -367,6 +387,11 @@
 
     <!-- มุมมองที่ 2: ตาราง Incidence -->
     <div id="incidenceView" style="display: none;">
+        <div class="table-header-banner">
+            <h2>โปรแกรมคำนวณตาราง Cancer Incidence &amp; ASR (Segi’s World Standard)</h2>
+            <p>คำนวณอัตราอุบัติการณ์โรคมะเร็งจำแนกตามกลุ่มอายุ (Age-Specific Incidence Rate), Crude Rate, Cumulative Risk (0-64, 0-74) และ ASR โดยใช้ประชากรมาตรฐานโลก Segi’s World Standard Population</p>
+        </div>
+
         <div id="incResultPanel" class="panel" style="display: none;">
             <div id="incSummaryBar" class="summary-bar"></div>
             <div class="table-wrapper">
@@ -787,17 +812,78 @@ function initYearSelects(years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]) {
 }
 initYearSelects();
 
+function getFileExtension(filename) {
+    const parts = String(filename || '').toLowerCase().split('.');
+    return parts.length > 1 ? parts.pop() : '';
+}
+
+function isExcelExtension(ext) {
+    return ext === 'xls' || ext === 'xlsx';
+}
+
+function splitDelimitedLine(line, delimiter) {
+    const result = [];
+    let current = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (ch === '"') {
+            if (inQuotes && line[i + 1] === '"') {
+                current += '"';
+                i++;
+            } else {
+                inQuotes = !inQuotes;
+            }
+        } else if (ch === delimiter && !inQuotes) {
+            result.push(current.trim());
+            current = '';
+        } else {
+            current += ch;
+        }
+    }
+    result.push(current.trim());
+    return result;
+}
+
+// อ่านไฟล์ (.txt, .xls, .xlsx, .csv) เป็น Matrix แถวและคอลัมน์สำหรับทะเบียนมะเร็ง
+function readMatrixFromFile(file, callback) {
+    const ext = getFileExtension(file.name);
+    const reader = new FileReader();
+
+    if (isExcelExtension(ext)) {
+        reader.onload = function(evt) {
+            const data = new Uint8Array(evt.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            const matrix = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: '' });
+            callback(matrix);
+        };
+        reader.readAsArrayBuffer(file);
+    } else {
+        reader.onload = function(evt) {
+            const text = evt.target.result || '';
+            const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
+            if (lines.length === 0) {
+                callback([]);
+                return;
+            }
+            const firstLine = lines[0];
+            const delimiter = firstLine.includes('\t') ? '\t' : (firstLine.includes(';') && !firstLine.includes(',') ? ';' : ',');
+            const matrix = lines.map(line => splitDelimitedLine(line, delimiter));
+            callback(matrix);
+        };
+        reader.readAsText(file, 'UTF-8');
+    }
+}
+
 document.getElementById('cancerFile').addEventListener('change', function(e) {
     const file = e.target.files[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = function(evt) {
-        const text = evt.target.result;
-        const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
-        if (lines.length < 2) return alert('ไฟล์ข้อมูลว่างเปล่า');
 
-        const delimiter = lines[0].includes('\t') ? '\t' : ',';
-        const headers = lines[0].split(delimiter).map(h => h.trim().toUpperCase());
+    readMatrixFromFile(file, function(matrix) {
+        if (!matrix || matrix.length < 2) return alert('ไฟล์ข้อมูลว่างเปล่า');
+
+        const headers = matrix[0].map(h => String(h ?? '').trim().toUpperCase());
 
         const idxSex = headers.indexOf('SEX');
         const idxAge = headers.indexOf('AGE');
@@ -817,24 +903,26 @@ document.getElementById('cancerFile').addEventListener('change', function(e) {
 
         cancerRecords = [];
         const yearSet = new Set();
+        const minCols = Math.max(idxSex, idxAge, idxDiag, idxI10);
 
-        for (let i = 1; i < lines.length; i++) {
-            const cols = lines[i].split(delimiter);
-            if (cols.length <= Math.max(idxSex, idxAge, idxDiag, idxI10)) continue;
-            if (idxObsT !== -1 && cols[idxObsT]?.trim() === '1') continue;
-            if (idxObsP !== -1 && cols[idxObsP]?.trim() === '1') continue;
+        for (let i = 1; i < matrix.length; i++) {
+            const cols = matrix[i];
+            if (!cols || cols.length <= minCols) continue;
+            if (idxObsT !== -1 && String(cols[idxObsT] ?? '').trim() === '1') continue;
+            if (idxObsP !== -1 && String(cols[idxObsP] ?? '').trim() === '1') continue;
 
-            const sex = parseInt(cols[idxSex]?.trim(), 10);
-            const ageRaw = cols[idxAge]?.trim();
+            const sex = parseInt(String(cols[idxSex] ?? '').trim(), 10);
+            const ageRaw = String(cols[idxAge] ?? '').trim();
             const age = (ageRaw === '' || ageRaw === '999' || isNaN(Number(ageRaw))) ? null : parseInt(ageRaw, 10);
-            const diagStr = cols[idxDiag]?.trim() || '';
+            const diagStr = String(cols[idxDiag] ?? '').trim();
             const year = diagStr.length >= 4 ? parseInt(diagStr.substring(0, 4), 10) : null;
-            const i10 = (cols[idxI10]?.trim() || '').toUpperCase();
-            const mor = idxMor !== -1 ? parseInt(cols[idxMor]?.trim(), 10) : null;
-            const basisRaw = idxBasis !== -1 ? cols[idxBasis]?.trim() : '';
+            const i10 = String(cols[idxI10] ?? '').trim().toUpperCase();
+            const morRaw = idxMor !== -1 ? String(cols[idxMor] ?? '').trim() : '';
+            const mor = (morRaw !== '' && !isNaN(Number(morRaw))) ? parseInt(morRaw, 10) : null;
+            const basisRaw = idxBasis !== -1 ? String(cols[idxBasis] ?? '').trim() : '';
             const basis = (basisRaw !== '' && !isNaN(Number(basisRaw))) ? parseInt(basisRaw, 10) : null;
-            const extRaw = idxExt !== -1 ? cols[idxExt]?.trim() : '';
-            const stagRaw = idxStag !== -1 ? cols[idxStag]?.trim() : '';
+            const extRaw = idxExt !== -1 ? String(cols[idxExt] ?? '').trim() : '';
+            const stagRaw = idxStag !== -1 ? String(cols[idxStag] ?? '').trim() : '';
 
             if (year && !isNaN(year)) yearSet.add(year);
             cancerRecords.push({ sex, age, year, i10, mor, basis, ext: extRaw, stag: stagRaw });
@@ -844,24 +932,38 @@ document.getElementById('cancerFile').addEventListener('change', function(e) {
         if (sortedYears.length > 0) initYearSelects(sortedYears);
 
         const badge = document.getElementById('cancerStatus');
-        badge.textContent = `โหลดสำเร็จ: ${cancerRecords.length.toLocaleString()} รายการ (${sortedYears[0]} - ${sortedYears[sortedYears.length-1]})`;
+        const yearRangeText = sortedYears.length > 0 ? ` (${sortedYears[0]} - ${sortedYears[sortedYears.length - 1]})` : '';
+        badge.textContent = `โหลดสำเร็จ: ${cancerRecords.length.toLocaleString()} รายการ${yearRangeText}`;
         badge.classList.add('ok');
 
         onFilterChange();
-    };
-    reader.readAsText(file, 'UTF-8');
+    });
 });
 
+// อ่านไฟล์ประชากร (.txt, .xls, .xlsx, .csv) เป็น Array of Objects
 function parsePopulationFile(file, callback) {
+    const ext = getFileExtension(file.name);
     const reader = new FileReader();
-    reader.onload = function(evt) {
-        const data = new Uint8Array(evt.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const sheetName = workbook.SheetNames[0];
-        const json = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: 0 });
-        callback(json);
-    };
-    reader.readAsArrayBuffer(file);
+
+    if (isExcelExtension(ext)) {
+        reader.onload = function(evt) {
+            const data = new Uint8Array(evt.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const sheetName = workbook.SheetNames[0];
+            const json = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: 0 });
+            callback(json);
+        };
+        reader.readAsArrayBuffer(file);
+    } else {
+        reader.onload = function(evt) {
+            const text = evt.target.result || '';
+            const workbook = XLSX.read(text, { type: 'string' });
+            const sheetName = workbook.SheetNames[0];
+            const json = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: 0 });
+            callback(json);
+        };
+        reader.readAsText(file, 'UTF-8');
+    }
 }
 
 document.getElementById('malePopFile').addEventListener('change', function(e) {
@@ -1436,8 +1538,8 @@ function renderDashboard() {
         data: {
             labels: yearsList,
             datasets: [
-                { label: 'HV% รวม (BASIS 5-8)', data: annualHvAll, borderColor: '#059669', backgroundColor: '#059669', tension: 0.25 },
-                { label: 'DCO% รวม (BASIS 0)', data: annualDcoAll, borderColor: '#dc2626', backgroundColor: '#dc2626', tension: 0.25 }
+                { label: 'HV% รวม', data: annualHvAll, borderColor: '#059669', backgroundColor: '#059669', tension: 0.25 },
+                { label: 'DCO% รวม', data: annualDcoAll, borderColor: '#dc2626', backgroundColor: '#dc2626', tension: 0.25 }
             ]
         },
         options: {
