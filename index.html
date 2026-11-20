@@ -140,6 +140,7 @@
         }
         th:first-child { z-index: 3; background: #0f172a; }
         td:last-child { text-align: left; font-family: monospace; font-weight: 600; color: #334155; }
+        #qcResultTable td:last-child { font-family: inherit; font-weight: 500; }
         tr:nth-child(even) td:not(:first-child) { background: #f8fafc; }
         tr:hover td { background: #e0f2fe !important; }
         tr.total-row td { background: #fef3c7 !important; font-weight: 700; border-top: 2px solid #94a3b8; }
@@ -157,7 +158,7 @@
 <aside class="sidebar">
     <div class="sidebar-brand">
         Cancer Registry System
-        <small>Dashboard, Incidence & Cases</small>
+        <small>Dashboard, Incidence, Cases & QC</small>
     </div>
     <button id="navDashboard" class="nav-btn active" onclick="switchView('dashboard')">
         <span>1. หน้าหลัก (Dashboard)</span>
@@ -168,8 +169,11 @@
     <button id="navNumberCases" class="nav-btn" onclick="switchView('numberCases')">
         <span>3. คำนวณตาราง Number of Cases</span>
     </button>
+    <button id="navDataQuality" class="nav-btn" onclick="switchView('dataQuality')">
+        <span>4. คำนวณตาราง Data Quality</span>
+    </button>
     <div class="sidebar-note">
-        * เลือกช่วงปีและเพศ หรือสลับเมนูด้านซ้ายเพื่อดู Dashboard, ตาราง Incidence และตาราง Number of Cases
+        * เลือกช่วงปีและเพศ หรือสลับเมนูด้านซ้ายเพื่อดู Dashboard, ตาราง Incidence, ตาราง Number of Cases และตาราง Data Quality
     </div>
 </aside>
 
@@ -225,6 +229,7 @@
                 <button id="refreshDashBtn" class="btn btn-primary" onclick="renderDashboard()">อัปเดต Dashboard</button>
                 <button id="calcIncBtn" class="btn btn-primary" style="display: none;" onclick="calculateIncidence()">คำนวณตาราง Incidence</button>
                 <button id="calcNumBtn" class="btn btn-primary" style="display: none;" onclick="calculateNumberOfCases()">คำนวณ Number of Cases</button>
+                <button id="calcQcBtn" class="btn btn-primary" style="display: none;" onclick="calculateDataQuality()">คำนวณ Data Quality</button>
                 <button id="exportBtn" class="btn btn-success" style="display: none;" onclick="exportCSV()" disabled>Export CSV</button>
             </div>
         </div>
@@ -259,11 +264,11 @@
         <!-- กราฟประชากรและสัดส่วนเพศ -->
         <div class="grid-2">
             <div class="chart-card">
-                <h4>ปิรามิดประชากร (Population Pyramid: เรียงอายุน้อยอยู่ด้านล่าง)</h4>
+                <h4>ปิรามิดประชากร (Population Pyramid)</h4>
                 <div class="chart-box"><canvas id="pyramidChart"></canvas></div>
             </div>
             <div class="chart-card">
-                <h4>จำนวนรายจำแนกตามกลุ่มอายุ (ชาย-หญิง แยกสีในแท่งเดียว)</h4>
+                <h4>จำนวนรายจำแนกตามกลุ่มอายุ</h4>
                 <div class="chart-box"><canvas id="stackedAgeChart"></canvas></div>
             </div>
         </div>
@@ -277,23 +282,23 @@
                 <h4>สรุปตัวชี้วัดคุณภาพสำคัญ (HV% และ DCO% ช่วงปีที่เลือก)</h4>
                 <div class="qc-overall-grid">
                     <div class="qc-box hv-box">
-                        <div class="qc-title">HV% รวม (BASIS = 5, 6, 7, 8)</div>
+                        <div class="qc-title">HV% รวม</div>
                         <div id="qcOverallHvVal" class="qc-num">0.0%</div>
                         <div id="qcOverallHvSub" class="qc-detail">0 / 0 ราย</div>
                     </div>
                     <div class="qc-box dco-box">
-                        <div class="qc-title">DCO% รวม (BASIS = 0)</div>
+                        <div class="qc-title">DCO% รวม</div>
                         <div id="qcOverallDcoVal" class="qc-num">0.0%</div>
                         <div id="qcOverallDcoSub" class="qc-detail">0 / 0 ราย</div>
                     </div>
                 </div>
                 <div class="grid-2" style="grid-template-columns: 1fr 1fr; gap: 10px;">
                     <div>
-                        <div style="font-size: 0.76rem; font-weight: 600; color: #065f46; margin-bottom: 4px;">HV% เปรียบเทียบชาย - หญิง (0–100%)</div>
+                        <div style="font-size: 0.76rem; font-weight: 600; color: #065f46; margin-bottom: 4px;">HV% เปรียบเทียบชาย - หญิง</div>
                         <div class="chart-box compact"><canvas id="qcHvGenderChart"></canvas></div>
                     </div>
                     <div>
-                        <div style="font-size: 0.76rem; font-weight: 600; color: #991b1b; margin-bottom: 4px;">DCO% เปรียบเทียบชาย - หญิง (สูงสุด 20%)</div>
+                        <div style="font-size: 0.76rem; font-weight: 600; color: #991b1b; margin-bottom: 4px;">DCO% เปรียบเทียบชาย - หญิง</div>
                         <div class="chart-box compact"><canvas id="qcDcoGenderChart"></canvas></div>
                     </div>
                 </div>
@@ -327,11 +332,11 @@
         <!-- กราฟ Stage by extent และ Stage by TNM Stage -->
         <div class="grid-2" style="margin-top: 14px;">
             <div class="chart-card">
-                <h4>Stage by extent (100% Stacked Bar Chart): ร้อยละของ EXT</h4>
+                <h4>Stage by extent</h4>
                 <div class="chart-box"><canvas id="stageExtentChart"></canvas></div>
             </div>
             <div class="chart-card">
-                <h4>Stage by TNM Stage (100% กราฟวงกลม): ร้อยละของ STAG</h4>
+                <h4>Stage by TNM Stage</h4>
                 <div class="chart-box"><canvas id="stageTnmChart"></canvas></div>
             </div>
         </div>
@@ -340,17 +345,17 @@
         <div class="section-title">ส่วนที่ 2: การควบคุมคุณภาพ (Quality Control)</div>
         <div class="grid-2">
             <div class="chart-card">
-                <h4>จำนวน Case รายปี (Annual Cases: กล่องด้านบน = ค่ารวม, แท่งกราฟ = ชาย/หญิง)</h4>
+                <h4>จำนวน Case รายปี</h4>
                 <div class="chart-box"><canvas id="annualCasesChart"></canvas></div>
             </div>
             <div class="chart-card">
-                <h4>HV% (BASIS = 5, 6, 7, 8) รายปี: กล่องด้านบน = HV% รวม, แท่งกราฟ = ชาย/หญิง</h4>
+                <h4>HV% รายปี</h4>
                 <div class="chart-box"><canvas id="hvChart"></canvas></div>
             </div>
         </div>
         <div class="grid-2" style="margin-top: 14px;">
             <div class="chart-card">
-                <h4>DCO% (BASIS = 0) รายปี: กล่องด้านบน = DCO% รวม, แท่งกราฟ = ชาย/หญิง (สูงสุด 20%)</h4>
+                <h4>DCO% รายปี</h4>
                 <div class="chart-box"><canvas id="dcoChart"></canvas></div>
             </div>
             <div class="chart-card">
@@ -441,6 +446,39 @@
             </div>
         </div>
     </div>
+
+    <!-- มุมมองที่ 4: ตาราง Data Quality (โครงสร้างตาม QC-Males.csv / QC-Females.csv) -->
+    <div id="dataQualityView" style="display: none;">
+        <div id="qcResultPanel" class="panel" style="display: none;">
+            <div id="qcSummaryBar" class="summary-bar"></div>
+            <div class="table-wrapper">
+                <table id="qcResultTable">
+                    <thead>
+                        <tr>
+                            <th>ICD10GROUP</th>
+                            <th>SEX</th>
+                            <th>N</th>
+                            <th>asr</th>
+                            <th>var</th>
+                            <th>se</th>
+                            <th>lci</th>
+                            <th>uci</th>
+                            <th>DCO(N)</th>
+                            <th>CLIN(N)</th>
+                            <th>MV(N)</th>
+                            <th>UNK(N)</th>
+                            <th>DCO(%)</th>
+                            <th>CLIN(%)</th>
+                            <th>MV(%)</th>
+                            <th>UNK(%)</th>
+                            <th>ICD10GROUPLABEL</th>
+                        </tr>
+                    </thead>
+                    <tbody id="qcTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 </main>
 
 <script>
@@ -518,6 +556,34 @@ const CANCER_SITES = [
     { site: "Myeloproliferative disorders", icd: "MPD", prefixes: ["D45", "D47"] },
     { site: "Myelodysplastic syndromes", icd: "MDS", prefixes: ["D46"] },
     { site: "Other and unspecified", icd: "O&U", prefixes: ["OTHER"] }
+];
+
+// โครงสร้างกลุ่มโรคสำหรับ Data Quality (อ้างอิงตาม QC-Males.csv และ QC-Females.csv)
+const QC_GROUPS = [
+    { group: "ALLbC44", label: "All sites but C44", isAllButC44: true },
+    { group: "C00-14", label: "Mouth & pharynx", prefixes: ["C00", "C01", "C02", "C03", "C04", "C05", "C06", "C07", "C08", "C09", "C10", "C11", "C12", "C13", "C14"] },
+    { group: "C15", label: "Oesophagus", prefixes: ["C15"] },
+    { group: "C16", label: "Stomach", prefixes: ["C16"] },
+    { group: "C18-21", label: "Colon, rectum, anus", prefixes: ["C18", "C19", "C20", "C21"] },
+    { group: "C22", label: "Liver", prefixes: ["C22"] },
+    { group: "C25", label: "Pancreas", prefixes: ["C25"] },
+    { group: "C32", label: "Larynx", prefixes: ["C32"] },
+    { group: "C33-34", label: "Trachea, bronchus, lung", prefixes: ["C33", "C34"] },
+    { group: "C37-38", label: "Pleura & other thoracic", prefixes: ["C37", "C38"] },
+    { group: "C43", label: "Melanoma of skin", prefixes: ["C43"] },
+    { group: "C50", label: "Breast", prefixes: ["C50"] },
+    { group: "C53", label: "Cervix", prefixes: ["C53"], sexOnly: 2 },
+    { group: "C54-55", label: "Corpus & uterus NOS", prefixes: ["C54", "C55"], sexOnly: 2 },
+    { group: "C56", label: "Ovary & adnexa", prefixes: ["C56"], sexOnly: 2 },
+    { group: "C61", label: "Prostate", prefixes: ["C61"], sexOnly: 1 },
+    { group: "C62", label: "Testis", prefixes: ["C62"], sexOnly: 1 },
+    { group: "C64-66,68", label: "Kidney & urinary NOS", prefixes: ["C64", "C65", "C66", "C68"] },
+    { group: "C67", label: "Bladder", prefixes: ["C67"] },
+    { group: "C70-72", label: "Brain & central nervous system", prefixes: ["C70", "C71", "C72"] },
+    { group: "C73", label: "Thyroid", prefixes: ["C73"] },
+    { group: "C76-80", label: "Ill-defined", prefixes: ["C76", "C77", "C78", "C79", "C80"] },
+    { group: "C81-85,90,88,96", label: "Lymphoma", prefixes: ["C81", "C82", "C83", "C84", "C85", "C88", "C90", "C96"] },
+    { group: "C91-95", label: "Leukaemia", prefixes: ["C91", "C92", "C93", "C94", "C95"] }
 ];
 
 function drawRoundedBox(ctx, x, y, width, height, radius, fillColor, strokeColor) {
@@ -649,18 +715,21 @@ function switchView(viewName) {
     document.getElementById('navDashboard').classList.toggle('active', viewName === 'dashboard');
     document.getElementById('navIncidence').classList.toggle('active', viewName === 'incidence');
     document.getElementById('navNumberCases').classList.toggle('active', viewName === 'numberCases');
+    document.getElementById('navDataQuality').classList.toggle('active', viewName === 'dataQuality');
 
     document.getElementById('dashboardView').style.display = (viewName === 'dashboard') ? 'block' : 'none';
     document.getElementById('incidenceView').style.display = (viewName === 'incidence') ? 'block' : 'none';
     document.getElementById('numberCasesView').style.display = (viewName === 'numberCases') ? 'block' : 'none';
+    document.getElementById('dataQualityView').style.display = (viewName === 'dataQuality') ? 'block' : 'none';
 
-    const isTableView = (viewName === 'incidence' || viewName === 'numberCases');
+    const isTableView = (viewName === 'incidence' || viewName === 'numberCases' || viewName === 'dataQuality');
     document.getElementById('dashSexGroup').style.display = (viewName === 'dashboard') ? 'block' : 'none';
     document.getElementById('refreshDashBtn').style.display = (viewName === 'dashboard') ? 'inline-block' : 'none';
 
     document.getElementById('tableSexGroup').style.display = isTableView ? 'block' : 'none';
     document.getElementById('calcIncBtn').style.display = (viewName === 'incidence') ? 'inline-block' : 'none';
     document.getElementById('calcNumBtn').style.display = (viewName === 'numberCases') ? 'inline-block' : 'none';
+    document.getElementById('calcQcBtn').style.display = (viewName === 'dataQuality') ? 'inline-block' : 'none';
     document.getElementById('exportBtn').style.display = isTableView ? 'inline-block' : 'none';
     document.getElementById('exportBtn').disabled = true;
 
@@ -673,17 +742,35 @@ function switchView(viewName) {
         }
     } else if (viewName === 'numberCases' && cancerRecords.length > 0) {
         calculateNumberOfCases();
+    } else if (viewName === 'dataQuality' && cancerRecords.length > 0) {
+        calculateDataQuality();
     }
 }
 
 function onFilterChange() {
     if (currentView === 'dashboard') {
         renderDashboard();
+    } else if (currentView === 'incidence' && cancerRecords.length > 0) {
+        const sex = parseInt(document.getElementById('sexFilter').value, 10);
+        if ((sex === 1 && malePopData) || (sex === 2 && femalePopData)) calculateIncidence();
+    } else if (currentView === 'numberCases' && cancerRecords.length > 0) {
+        calculateNumberOfCases();
+    } else if (currentView === 'dataQuality' && cancerRecords.length > 0) {
+        calculateDataQuality();
     }
 }
 
 function onTableSexChange() {
     document.getElementById('exportBtn').disabled = true;
+    if (cancerRecords.length === 0) return;
+    if (currentView === 'incidence') {
+        const sex = parseInt(document.getElementById('sexFilter').value, 10);
+        if ((sex === 1 && malePopData) || (sex === 2 && femalePopData)) calculateIncidence();
+    } else if (currentView === 'numberCases') {
+        calculateNumberOfCases();
+    } else if (currentView === 'dataQuality') {
+        calculateDataQuality();
+    }
 }
 
 function initYearSelects(years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]) {
@@ -744,7 +831,8 @@ document.getElementById('cancerFile').addEventListener('change', function(e) {
             const year = diagStr.length >= 4 ? parseInt(diagStr.substring(0, 4), 10) : null;
             const i10 = (cols[idxI10]?.trim() || '').toUpperCase();
             const mor = idxMor !== -1 ? parseInt(cols[idxMor]?.trim(), 10) : null;
-            const basis = idxBasis !== -1 ? parseInt(cols[idxBasis]?.trim(), 10) : null;
+            const basisRaw = idxBasis !== -1 ? cols[idxBasis]?.trim() : '';
+            const basis = (basisRaw !== '' && !isNaN(Number(basisRaw))) ? parseInt(basisRaw, 10) : null;
             const extRaw = idxExt !== -1 ? cols[idxExt]?.trim() : '';
             const stagRaw = idxStag !== -1 ? cols[idxStag]?.trim() : '';
 
@@ -759,7 +847,7 @@ document.getElementById('cancerFile').addEventListener('change', function(e) {
         badge.textContent = `โหลดสำเร็จ: ${cancerRecords.length.toLocaleString()} รายการ (${sortedYears[0]} - ${sortedYears[sortedYears.length-1]})`;
         badge.classList.add('ok');
 
-        renderDashboard();
+        onFilterChange();
     };
     reader.readAsText(file, 'UTF-8');
 });
@@ -784,7 +872,7 @@ document.getElementById('malePopFile').addEventListener('change', function(e) {
         const badge = document.getElementById('malePopStatus');
         badge.textContent = `โหลดสำเร็จ: ${json.length} กลุ่มอายุ`;
         badge.classList.add('ok');
-        renderDashboard();
+        onFilterChange();
     });
 });
 
@@ -796,7 +884,7 @@ document.getElementById('femalePopFile').addEventListener('change', function(e) 
         const badge = document.getElementById('femalePopStatus');
         badge.textContent = `โหลดสำเร็จ: ${json.length} กลุ่มอายุ`;
         badge.classList.add('ok');
-        renderDashboard();
+        onFilterChange();
     });
 });
 
@@ -1157,10 +1245,10 @@ function renderDashboard() {
         activeFiltered,
         r => normalizeStagCategory(r.stag),
         [
-            { key: '1', label: '1 = Stage 1', color: '#10b981' },
-            { key: '2', label: '2 = Stage 2', color: '#3b82f6' },
-            { key: '3', label: '3 = Stage 3', color: '#f59e0b' },
-            { key: '4', label: '4 = Stage 4', color: '#ef4444' },
+            { key: '1', label: 'Stage 1', color: '#10b981' },
+            { key: '2', label: 'Stage 2', color: '#3b82f6' },
+            { key: '3', label: 'Stage 3', color: '#f59e0b' },
+            { key: '4', label: 'Stage 4', color: '#ef4444' },
             { key: 'UNK', label: 'Unknown', color: '#94a3b8' }
         ]
     );
@@ -1195,7 +1283,7 @@ function renderDashboard() {
         data: {
             labels: ['เพศชาย (Male)', 'เพศหญิง (Female)'],
             datasets: [{
-                label: 'HV% (BASIS 5-8)',
+                label: 'HV%',
                 data: [hvMale, hvFemale],
                 backgroundColor: ['#2563eb', '#ec4899']
             }]
@@ -1618,6 +1706,209 @@ function renderNumberCasesTable(rows, sex, startYear, endYear, totalAllSites, to
     `;
 
     document.getElementById('numResultPanel').style.display = 'block';
+    document.getElementById('exportBtn').disabled = false;
+}
+
+// คำนวณตาราง Data Quality (โครงสร้างตาม QC-Males.csv / QC-Females.csv)
+function calculateDataQuality() {
+    if (cancerRecords.length === 0) {
+        alert('กรุณานำเข้าไฟล์ข้อมูลทะเบียนมะเร็งก่อน');
+        return;
+    }
+    const sex = parseInt(document.getElementById('sexFilter').value, 10);
+    const startYear = parseInt(document.getElementById('startYear').value, 10);
+    const endYear = parseInt(document.getElementById('endYear').value, 10);
+
+    if (startYear > endYear) {
+        alert('ปีเริ่มต้นต้องน้อยกว่าหรือเท่ากับปีที่สิ้นสุด');
+        return;
+    }
+
+    const popSource = (sex === 1) ? malePopData : femalePopData;
+    const hasPop = Boolean(popSource);
+    const popByAge = hasPop ? getPopulationByAgeGroup(popSource, startYear, endYear) : new Array(18).fill(0);
+    const totalPop = popByAge.reduce((a, b) => a + b, 0);
+
+    const activeGroups = QC_GROUPS.filter(g => !g.sexOnly || g.sexOnly === sex);
+
+    const groupStats = activeGroups.map(g => ({
+        group: g.group,
+        label: g.label,
+        isAllButC44: Boolean(g.isAllButC44),
+        prefixes: g.prefixes || [],
+        N: 0,
+        ageUnk: 0,
+        ageCounts: new Array(18).fill(0),
+        dcoN: 0,
+        clinN: 0,
+        mvN: 0,
+        unkN: 0
+    }));
+
+    function accumulateRecord(st, rec) {
+        st.N++;
+        const ageIdx = getAgeGroupIndex(rec.age);
+        if (ageIdx === -1) {
+            st.ageUnk++;
+        } else {
+            st.ageCounts[ageIdx]++;
+        }
+
+        // DCO (Basis=0), CLIN(BASIS=1,2,3,4), MV(BASIS=5,6,7,8), UNK(BASIS=9)
+        if (rec.basis === 0) {
+            st.dcoN++;
+        } else if ([1, 2, 3, 4].includes(rec.basis)) {
+            st.clinN++;
+        } else if ([5, 6, 7, 8].includes(rec.basis)) {
+            st.mvN++;
+        } else if (rec.basis === 9) {
+            st.unkN++;
+        }
+    }
+
+    cancerRecords.forEach(rec => {
+        if (rec.sex !== sex) return;
+        if (!rec.year || rec.year < startYear || rec.year > endYear) return;
+
+        const siteIdx = mapSiteIndex(rec, sex);
+        if (siteIdx === -1) return;
+
+        const prefix3 = rec.i10.substring(0, 3);
+
+        // แถวรวม ALLbC44 (ทุกตำแหน่งยกเว้น C44)
+        if (prefix3 !== 'C44') {
+            accumulateRecord(groupStats[0], rec);
+        }
+
+        // จับคู่กลุ่มโรค ICD10GROUP
+        for (let i = 1; i < groupStats.length; i++) {
+            if (groupStats[i].prefixes.includes(prefix3)) {
+                accumulateRecord(groupStats[i], rec);
+                break;
+            }
+        }
+    });
+
+    const totalSegi = SEGI_WEIGHTS.reduce((a, b) => a + b, 0); // 100,000
+
+    const finalRows = groupStats.map(st => {
+        let asr = 0, varVal = 0, se = 0, lci = 0, uci = 0;
+
+        if (totalPop > 0 && st.N > 0) {
+            let asrRaw = 0;
+            let varRaw = 0;
+            for (let i = 0; i < 18; i++) {
+                const w = SEGI_WEIGHTS[i] / totalSegi;
+                const pop = popByAge[i];
+                const d = st.ageCounts[i];
+                if (pop > 0) {
+                    const rate = (d / pop) * 100000;
+                    asrRaw += rate * w;
+                    varRaw += Math.pow(w, 2) * (d / Math.pow(pop, 2)) * 1e10;
+                }
+            }
+            const knownAges = st.N - st.ageUnk;
+            const unkFactor = (knownAges > 0 && st.ageUnk > 0) ? (st.N / knownAges) : 1;
+            asr = asrRaw * unkFactor;
+            varVal = varRaw * Math.pow(unkFactor, 2);
+            se = Math.sqrt(varVal);
+            lci = asr - 1.96 * se;
+            uci = asr + 1.96 * se;
+        }
+
+        const fmtPct = (num, den) => {
+            if (den <= 0 || num === 0) return '0';
+            return Number(((num / den) * 100).toFixed(2)).toString();
+        };
+
+        const fmtNum2 = (val) => {
+            if (totalPop <= 0) return '0.00';
+            return Number(val.toFixed(2)) === 0 ? '0' : val.toFixed(2);
+        };
+
+        return {
+            group: st.group,
+            sex: sex,
+            N: st.N,
+            asr: totalPop > 0 ? asr.toFixed(2) : '0.00',
+            varStr: fmtNum2(varVal),
+            se: totalPop > 0 ? se.toFixed(2) : '0.00',
+            lci: fmtNum2(lci),
+            uci: fmtNum2(uci),
+            dcoN: st.dcoN,
+            clinN: st.clinN,
+            mvN: st.mvN,
+            unkN: st.unkN,
+            dcoPct: fmtPct(st.dcoN, st.N),
+            clinPct: fmtPct(st.clinN, st.N),
+            mvPct: fmtPct(st.mvN, st.N),
+            unkPct: fmtPct(st.unkN, st.N),
+            label: st.label,
+            isTotal: st.isAllButC44
+        };
+    });
+
+    renderDataQualityTable(finalRows, sex, startYear, endYear, totalPop);
+}
+
+function renderDataQualityTable(rows, sex, startYear, endYear, totalPop) {
+    const tbody = document.getElementById('qcTableBody');
+    tbody.innerHTML = '';
+    generatedCSVRows = [];
+
+    const headerCSV = [
+        'ICD10GROUP','SEX','N','asr','var','se','lci','uci',
+        'DCO(N)','CLIN(N)','MV(N)','UNK(N)',
+        'DCO(%)','CLIN(%)','MV(%)','UNK(%)','ICD10GROUPLABEL'
+    ];
+    generatedCSVRows.push(headerCSV);
+
+    rows.forEach(r => {
+        const tr = document.createElement('tr');
+        if (r.isTotal) tr.className = 'total-row';
+
+        const cells = [
+            r.group,
+            r.sex,
+            r.N,
+            r.asr,
+            r.varStr,
+            r.se,
+            r.lci,
+            r.uci,
+            r.dcoN,
+            r.clinN,
+            r.mvN,
+            r.unkN,
+            r.dcoPct,
+            r.clinPct,
+            r.mvPct,
+            r.unkPct,
+            r.label
+        ];
+
+        generatedCSVRows.push(cells);
+
+        cells.forEach(val => {
+            const td = document.createElement('td');
+            td.textContent = val;
+            tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+    });
+
+    generatedCSVFilename = sex === 1 ? 'QC-Males.csv' : 'QC-Females.csv';
+    const allRow = rows[0] || { N: 0, dcoPct: 0, clinPct: 0, mvPct: 0, unkPct: 0 };
+    const popNotice = totalPop <= 0 ? ' <span style="color:#dc2626;">(ยังไม่ได้นำเข้าไฟล์ประชากร ค่า ASR จะแสดง 0.00)</span>' : '';
+
+    document.getElementById('qcSummaryBar').innerHTML = `
+        <span>เพศที่เลือก: <strong>${sex === 1 ? 'เพศชาย (QC-Males)' : 'เพศหญิง (QC-Females)'}</strong></span>
+        <span>ช่วงปี: <strong>${startYear} - ${endYear}</strong></span>
+        <span>All sites but C44 (N): <strong>${allRow.N.toLocaleString()} ราย</strong></span>
+        <span>DCO: <strong>${allRow.dcoPct}%</strong> | CLIN: <strong>${allRow.clinPct}%</strong> | MV: <strong>${allRow.mvPct}%</strong> | UNK: <strong>${allRow.unkPct}%</strong>${popNotice}</span>
+    `;
+
+    document.getElementById('qcResultPanel').style.display = 'block';
     document.getElementById('exportBtn').disabled = false;
 }
 
