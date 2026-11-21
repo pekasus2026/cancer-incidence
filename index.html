@@ -130,6 +130,8 @@
         .btn-primary:hover { background: #1d4ed8; }
         .btn-success { background: #059669; color: white; }
         .btn-success:hover { background: #047857; }
+        .btn-danger { background: #dc2626; color: white; }
+        .btn-danger:hover { background: #b91c1c; }
         .btn-light { background: #e2e8f0; color: #1e293b; }
         .btn-light:hover { background: #cbd5e1; }
         .btn:disabled { background: #94a3b8; cursor: not-allowed; }
@@ -273,8 +275,14 @@
     <button id="navDiseaseDetail" class="nav-btn" onclick="switchView('diseaseDetail')">
         <span>5. ข้อมูลรายโรค</span>
     </button>
+    <button id="navPathology" class="nav-btn" onclick="switchView('pathology')">
+        <span>6. Pathological group</span>
+    </button>
+    <button id="navMorphology" class="nav-btn" onclick="switchView('morphology')">
+        <span>7. Morphology</span>
+    </button>
     <div class="sidebar-note">
-        * เลือกช่วงปีและเพศ หรือสลับเมนูด้านซ้ายเพื่อดู Dashboard, ตาราง Incidence, ตาราง Number of Cases, ตาราง Data Quality และข้อมูลรายโรค
+        * เลือกช่วงปีและเพศ หรือสลับเมนูด้านซ้ายเพื่อดู Dashboard, ตาราง Incidence, ตาราง Number of Cases, ตาราง Data Quality, ข้อมูลรายโรค และ Pathological group
     </div>
 </aside>
 
@@ -328,7 +336,9 @@
             </div>
             <div style="display: flex; gap: 6px; flex-wrap: wrap;">
                 <button id="refreshDashBtn" class="btn btn-primary" onclick="renderDashboard()">อัปเดต Dashboard</button>
+                <button id="clearImportBtn" class="btn btn-danger" onclick="resetImportedData()">ล้างข้อมูลนำเข้า</button>
                 <button id="refreshDiseaseBtn" class="btn btn-primary" style="display: none;" onclick="renderDiseaseDetail()">อัปเดตข้อมูลรายโรค</button>
+                <button id="refreshPathoBtn" class="btn btn-primary" style="display: none;" onclick="renderPathologyView()">อัปเดต Pathological group</button>
                 <button id="calcIncBtn" class="btn btn-primary" style="display: none;" onclick="calculateIncidence()">คำนวณตาราง Incidence</button>
                 <button id="calcNumBtn" class="btn btn-primary" style="display: none;" onclick="calculateNumberOfCases()">คำนวณ Number of Cases</button>
                 <button id="calcQcBtn" class="btn btn-primary" style="display: none;" onclick="calculateDataQuality()">คำนวณ Data Quality</button>
@@ -734,6 +744,247 @@
             </div>
         </div>
     </div>
+
+    <!-- มุมมองที่ 6: Pathological group -->
+    <div id="pathologyView" style="display: none;">
+        <div class="table-header-banner">
+            <h2>6. Pathological Group (กลุ่มพยาธิวิทยาตาม ICD-O-3 Morphology)</h2>
+            <p>แสดงร้อยละและจำนวนผู้ป่วยจำแนกตามกลุ่มพยาธิวิทยา 17 กลุ่มหลัก จากรหัสสัณฐานวิทยา (คอลัมน์ MOR) เทียบกับมาตรฐาน ICD-O-3 Morphology พร้อมตัวกรองข้อมูลรายโรค</p>
+        </div>
+
+        <!-- ตัวกรองข้อมูลรายโรคสำหรับหน้า Pathological Group (เลือกได้หลายข้อ) -->
+        <div class="panel">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 10px;">
+                <strong style="font-size: 0.9rem; color: #0f172a;">ตัวกรองข้อมูลรายโรค (เลือกได้หลายข้อในแต่ละหมวด)</strong>
+                <button type="button" class="btn btn-light" onclick="clearPathoDiseaseFilters()">ล้างตัวกรองรายโรค (Pathology)</button>
+            </div>
+            <div class="multi-grid">
+                <!-- 1. ตัวกรองเลือกตาม ICD10 (I10) -->
+                <div class="multi-box">
+                    <div class="multi-box-header">
+                        <span class="multi-box-title">1. เลือกตาม ICD10 (I10)</span>
+                        <div class="multi-actions">
+                            <button type="button" class="mini-btn" onclick="selectAllPathoInBox('icd10', true)">เลือกทั้งหมด</button>
+                            <button type="button" class="mini-btn" onclick="selectAllPathoInBox('icd10', false)">ล้าง</button>
+                        </div>
+                    </div>
+                    <input type="text" id="searchPathoIcd10" class="multi-search" placeholder="ค้นหารหัส ICD10 (เช่น C50, C34, C22)..." oninput="filterPathoCheckboxList('icd10')">
+                    <div id="listPathoIcd10" class="multi-list">
+                        <div style="font-size: 0.74rem; color: #64748b; padding: 6px;">นำเข้าไฟล์ทะเบียนมะเร็งเพื่อแสดงรายการรหัส I10</div>
+                    </div>
+                    <div id="summaryPathoIcd10" class="selected-summary">เลือกแล้ว: ทั้งหมด (ไม่ได้จำกัดรหัส)</div>
+                </div>
+
+                <!-- 2. ตัวกรองเลือกตาม Site (ตามตาราง Incidence) -->
+                <div class="multi-box">
+                    <div class="multi-box-header">
+                        <span class="multi-box-title">2. เลือกตาม Site (ตาราง Incidence)</span>
+                        <div class="multi-actions">
+                            <button type="button" class="mini-btn" onclick="selectAllPathoInBox('site', true)">เลือกทั้งหมด</button>
+                            <button type="button" class="mini-btn" onclick="selectAllPathoInBox('site', false)">ล้าง</button>
+                        </div>
+                    </div>
+                    <input type="text" id="searchPathoSite" class="multi-search" placeholder="ค้นหา Site หรือ ICD..." oninput="filterPathoCheckboxList('site')">
+                    <div id="listPathoSite" class="multi-list"></div>
+                    <div id="summaryPathoSite" class="selected-summary">เลือกแล้ว: ทั้งหมด (ไม่ได้จำกัด Site)</div>
+                </div>
+
+                <!-- 3. ตัวกรองเลือกตามกลุ่มโรค (ICD10GROUPLABEL - ICD10GROUP) -->
+                <div class="multi-box">
+                    <div class="multi-box-header">
+                        <span class="multi-box-title">3. เลือกตามกลุ่มโรค (ICD10GROUPLABEL - ICD10GROUP)</span>
+                        <div class="multi-actions">
+                            <button type="button" class="mini-btn" onclick="selectAllPathoInBox('group', true)">เลือกทั้งหมด</button>
+                            <button type="button" class="mini-btn" onclick="selectAllPathoInBox('group', false)">ล้าง</button>
+                        </div>
+                    </div>
+                    <input type="text" id="searchPathoGroup" class="multi-search" placeholder="ค้นหากลุ่มโรคหรือ ICD10GROUP..." oninput="filterPathoCheckboxList('group')">
+                    <div id="listPathoGroup" class="multi-list"></div>
+                    <div id="summaryPathoGroup" class="selected-summary">เลือกแล้ว: ทั้งหมด (ไม่ได้จำกัดกลุ่มโรค)</div>
+                </div>
+            </div>
+            <div id="pathoActiveFilterBar" class="summary-bar" style="margin-top: 10px; margin-bottom: 0;"></div>
+        </div>
+
+        <div class="grid-kpi">
+            <div class="kpi-card">
+                <div class="kpi-label">จำนวนผู้ป่วยตามตัวกรองทั้งหมด</div>
+                <div id="pathoKpiTotal" class="kpi-val">0</div>
+                <div id="pathoKpiSub" class="kpi-sub">ช่วงปี: -</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">จัดกลุ่มพยาธิวิทยาได้ (Group 1–17)</div>
+                <div id="pathoKpiMatched" class="kpi-val">0</div>
+                <div id="pathoKpiMatchedPct" class="kpi-sub">0.0% ของผู้ป่วยทั้งหมด</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">กลุ่มพยาธิวิทยาที่พบบ่อยอันดับ 1</div>
+                <div id="pathoKpiTop1" class="kpi-val" style="font-size: 1.02rem;">-</div>
+                <div id="pathoKpiTop1Sub" class="kpi-sub">0 ราย (0.0%)</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">ไม่ระบุรหัส MOR / อื่นๆ</div>
+                <div id="pathoKpiUnmatched" class="kpi-val">0</div>
+                <div id="pathoKpiUnmatchedPct" class="kpi-sub">0.0%</div>
+            </div>
+        </div>
+
+        <div class="chart-card" style="margin-bottom: 14px;">
+            <h4>ร้อยละของกลุ่มพยาธิวิทยา (Pathological Group %)</h4>
+            <div style="position: relative; height: 530px; width: 100%;"><canvas id="mainPathoPctBarChart"></canvas></div>
+        </div>
+
+        <div class="grid-2" style="margin-bottom: 14px;">
+            <div class="chart-card">
+                <h4>เปรียบเทียบร้อยละกลุ่มพยาธิวิทยาแยกตามเพศ (ชาย vs หญิง)</h4>
+                <div style="position: relative; height: 520px; width: 100%;"><canvas id="mainPathoGenderChart"></canvas></div>
+            </div>
+            <div class="chart-card">
+                <h4>สัดส่วน Top 8 กลุ่มพยาธิวิทยาที่พบบ่อย</h4>
+                <div style="position: relative; height: 520px; width: 100%;"><canvas id="mainPathoPieChart"></canvas></div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h4 style="margin: 0 0 10px 0; font-size: 0.9rem; color: #0f172a;">ตารางสรุปจำนวนและร้อยละจำแนกตามกลุ่มพยาธิวิทยา (ICD-O-3 Morphology)</h4>
+            <div class="table-wrapper">
+                <table style="font-size: 0.74rem;">
+                    <thead>
+                        <tr>
+                            <th style="text-align: left; max-width: none;">กลุ่มพยาธิวิทยา (Group)</th>
+                            <th>เพศชาย (N)</th>
+                            <th>เพศชาย (%)</th>
+                            <th>เพศหญิง (N)</th>
+                            <th>เพศหญิง (%)</th>
+                            <th>รวม (N)</th>
+                            <th>ร้อยละรวม (%)</th>
+                            <th style="text-align: left;">ICD-O-3 Morphology</th>
+                        </tr>
+                    </thead>
+                    <tbody id="mainPathoTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- มุมมองที่ 7: Morphology -->
+    <div id="morphologyView" style="display: none;">
+        <div class="table-header-banner">
+            <h2>7. Morphology (พยาธิวิทยาจำแนกรหัส MOR)</h2>
+            <p>เทียบคอลัมน์ MOR จากไฟล์ทะเบียนมะเร็งกับตาราง Morphology แสดงกราฟร้อยละของพยาธิวิทยาและตาราง Mor, Morphology, Number, % พร้อมตัวกรองข้อมูลรายโรค</p>
+        </div>
+
+        <div class="panel">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 10px;">
+                <strong style="font-size: 0.9rem; color: #0f172a;">ตัวกรองข้อมูลรายโรค (เลือกได้หลายข้อในแต่ละหมวด)</strong>
+                <button type="button" class="btn btn-light" onclick="clearMorphDiseaseFilters()">ล้างตัวกรองรายโรค (Morphology)</button>
+            </div>
+            <div class="multi-grid">
+                <div class="multi-box">
+                    <div class="multi-box-header">
+                        <span class="multi-box-title">1. เลือกตาม ICD10 (I10)</span>
+                        <div class="multi-actions">
+                            <button type="button" class="mini-btn" onclick="selectAllMorphInBox('icd10', true)">เลือกทั้งหมด</button>
+                            <button type="button" class="mini-btn" onclick="selectAllMorphInBox('icd10', false)">ล้าง</button>
+                        </div>
+                    </div>
+                    <input type="text" id="searchMorphIcd10" class="multi-search" placeholder="ค้นหารหัส ICD10 (เช่น C50, C34, C22)..." oninput="filterMorphCheckboxList('icd10')">
+                    <div id="listMorphIcd10" class="multi-list">
+                        <div style="font-size: 0.74rem; color: #64748b; padding: 6px;">นำเข้าไฟล์ทะเบียนมะเร็งเพื่อแสดงรายการรหัส I10</div>
+                    </div>
+                    <div id="summaryMorphIcd10" class="selected-summary">เลือกแล้ว: ทั้งหมด (ไม่ได้จำกัดรหัส)</div>
+                </div>
+
+                <div class="multi-box">
+                    <div class="multi-box-header">
+                        <span class="multi-box-title">2. เลือกตาม Site (ตาราง Incidence)</span>
+                        <div class="multi-actions">
+                            <button type="button" class="mini-btn" onclick="selectAllMorphInBox('site', true)">เลือกทั้งหมด</button>
+                            <button type="button" class="mini-btn" onclick="selectAllMorphInBox('site', false)">ล้าง</button>
+                        </div>
+                    </div>
+                    <input type="text" id="searchMorphSite" class="multi-search" placeholder="ค้นหา Site หรือ ICD..." oninput="filterMorphCheckboxList('site')">
+                    <div id="listMorphSite" class="multi-list"></div>
+                    <div id="summaryMorphSite" class="selected-summary">เลือกแล้ว: ทั้งหมด (ไม่ได้จำกัด Site)</div>
+                </div>
+
+                <div class="multi-box">
+                    <div class="multi-box-header">
+                        <span class="multi-box-title">3. เลือกตามกลุ่มโรค (ICD10GROUPLABEL - ICD10GROUP)</span>
+                        <div class="multi-actions">
+                            <button type="button" class="mini-btn" onclick="selectAllMorphInBox('group', true)">เลือกทั้งหมด</button>
+                            <button type="button" class="mini-btn" onclick="selectAllMorphInBox('group', false)">ล้าง</button>
+                        </div>
+                    </div>
+                    <input type="text" id="searchMorphGroup" class="multi-search" placeholder="ค้นหากลุ่มโรคหรือ ICD10GROUP..." oninput="filterMorphCheckboxList('group')">
+                    <div id="listMorphGroup" class="multi-list"></div>
+                    <div id="summaryMorphGroup" class="selected-summary">เลือกแล้ว: ทั้งหมด (ไม่ได้จำกัดกลุ่มโรค)</div>
+                </div>
+            </div>
+            <div id="morphActiveFilterBar" class="summary-bar" style="margin-top: 10px; margin-bottom: 0;"></div>
+        </div>
+
+        <div class="grid-kpi">
+            <div class="kpi-card">
+                <div class="kpi-label">จำนวนผู้ป่วยตามตัวกรองทั้งหมด</div>
+                <div id="morphKpiTotal" class="kpi-val">0</div>
+                <div id="morphKpiSub" class="kpi-sub">ช่วงปี: -</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">จำนวนรหัส MOR ที่พบ</div>
+                <div id="morphKpiMorCount" class="kpi-val">0</div>
+                <div id="morphKpiMatchedSub" class="kpi-sub">ตรงกับตาราง Morphology: 0 ราย</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Morphology ที่พบบ่อยอันดับ 1</div>
+                <div id="morphKpiTop1" class="kpi-val" style="font-size: 1rem;">-</div>
+                <div id="morphKpiTop1Sub" class="kpi-sub">0 ราย (0.00%)</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">ไม่พบในตาราง Morphology / ว่าง</div>
+                <div id="morphKpiUnmatched" class="kpi-val">0</div>
+                <div id="morphKpiUnmatchedSub" class="kpi-sub">0.00%</div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 8px;">
+                <h4 style="margin: 0; font-size: 0.92rem; color: #0f172a;">กราฟร้อยละของพยาธิวิทยาจำแนกตาม Morphology (%)</h4>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <label for="menu7ChartLimit" style="font-size: 0.78rem; font-weight: 600;">แสดงบนกราฟ:</label>
+                    <select id="menu7ChartLimit" onchange="renderMenu7Morphology()" style="padding: 4px 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.78rem;">
+                        <option value="15" selected>Top 15</option>
+                        <option value="20">Top 20</option>
+                        <option value="30">Top 30</option>
+                        <option value="all">ทั้งหมด (All)</option>
+                    </select>
+                </div>
+            </div>
+            <div id="menu7MorphChartBox" style="position: relative; height: 450px; width: 100%;">
+                <canvas id="menu7MorphPctChart"></canvas>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 8px;">
+                <h4 style="margin: 0; font-size: 0.92rem; color: #0f172a;">ตารางสรุปพยาธิวิทยา (Mor, Morphology, Number, %)</h4>
+                <input type="text" id="menu7TableSearch" placeholder="ค้นหารหัส Mor หรือ Morphology ในตาราง..." oninput="renderMenu7MorphTableOnly()" style="padding: 5px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.78rem; min-width: 240px;">
+            </div>
+            <div class="table-wrapper">
+                <table style="font-size: 0.76rem;">
+                    <thead>
+                        <tr>
+                            <th style="position: static; width: 110px;">Mor</th>
+                            <th style="position: static; text-align: left;">Morphology</th>
+                            <th style="position: static; text-align: right; width: 120px;">Number</th>
+                            <th style="position: static; text-align: right; width: 110px;">%</th>
+                        </tr>
+                    </thead>
+                    <tbody id="menu7MorphTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 </main>
 
 <script>
@@ -840,6 +1091,461 @@ const QC_GROUPS = [
     { group: "C81-85,90,88,96", label: "Lymphoma", prefixes: ["C81", "C82", "C83", "C84", "C85", "C88", "C90", "C96"] },
     { group: "C91-95", label: "Leukaemia", prefixes: ["C91", "C92", "C93", "C94", "C95"] }
 ];
+
+
+const PATHOLOGY_GROUPS = [
+    {
+        "group": "1. Squamous and transitional cell carcinoma",
+        "morphText": "8051-8086, 8120-8131",
+        "ranges": [
+            [
+                8051,
+                8086
+            ],
+            [
+                8120,
+                8131
+            ]
+        ]
+    },
+    {
+        "group": "2. Basal cell carcinomas",
+        "morphText": "8090-8110",
+        "ranges": [
+            [
+                8090,
+                8110
+            ]
+        ]
+    },
+    {
+        "group": "3. Adenocarcinomas",
+        "morphText": "8140-8149, 8160-8163, 8190-8221, 8250-8552, 8570-8576, 8940-8941, 9110",
+        "ranges": [
+            [
+                8140,
+                8149
+            ],
+            [
+                8160,
+                8163
+            ],
+            [
+                8190,
+                8221
+            ],
+            [
+                8250,
+                8552
+            ],
+            [
+                8570,
+                8576
+            ],
+            [
+                8940,
+                8941
+            ],
+            [
+                9110,
+                9110
+            ]
+        ]
+    },
+    {
+        "group": "4. Other specific carcinomas",
+        "morphText": "8023, 8030-8046, 8150-8158, 8170-8180, 8230-8249, 8560-8562, 8580-8589",
+        "ranges": [
+            [
+                8023,
+                8023
+            ],
+            [
+                8030,
+                8046
+            ],
+            [
+                8150,
+                8158
+            ],
+            [
+                8170,
+                8180
+            ],
+            [
+                8230,
+                8249
+            ],
+            [
+                8560,
+                8562
+            ],
+            [
+                8580,
+                8589
+            ]
+        ]
+    },
+    {
+        "group": "5. Unspecified carcinomas (NOS)",
+        "morphText": "8010-8015, 8020-8022, 8050",
+        "ranges": [
+            [
+                8010,
+                8015
+            ],
+            [
+                8020,
+                8022
+            ],
+            [
+                8050,
+                8050
+            ]
+        ]
+    },
+    {
+        "group": "6. Sarcomas and soft tissue tumors",
+        "morphText": "8680-8714, 8800-8921, 8930-8936, 8990-8992, 9040-9045, 9120-9125, 9130-9138, 9141-9252, 9370-9373, 9540-9582",
+        "ranges": [
+            [
+                8680,
+                8714
+            ],
+            [
+                8800,
+                8921
+            ],
+            [
+                8930,
+                8936
+            ],
+            [
+                8990,
+                8992
+            ],
+            [
+                9040,
+                9045
+            ],
+            [
+                9120,
+                9125
+            ],
+            [
+                9130,
+                9138
+            ],
+            [
+                9141,
+                9252
+            ],
+            [
+                9370,
+                9373
+            ],
+            [
+                9540,
+                9582
+            ]
+        ]
+    },
+    {
+        "group": "7. Mesothelioma",
+        "morphText": "9050-9055",
+        "ranges": [
+            [
+                9050,
+                9055
+            ]
+        ]
+    },
+    {
+        "group": "8. Myeloid",
+        "morphText": "9840, 9860-9931, 9945-9946, 9950, 9960-9964, 9966, 9975, 9980-9989, 9993",
+        "ranges": [
+            [
+                9840,
+                9840
+            ],
+            [
+                9860,
+                9931
+            ],
+            [
+                9945,
+                9946
+            ],
+            [
+                9950,
+                9950
+            ],
+            [
+                9960,
+                9964
+            ],
+            [
+                9966,
+                9966
+            ],
+            [
+                9975,
+                9975
+            ],
+            [
+                9980,
+                9989
+            ],
+            [
+                9993,
+                9993
+            ]
+        ]
+    },
+    {
+        "group": "9. B-cell neoplasms",
+        "morphText": "9597, 9671-9699, 9712, 9731-9738, 9761-9767, 9769, 9811-9819, 9823, 9833, 9836, 9940",
+        "ranges": [
+            [
+                9597,
+                9597
+            ],
+            [
+                9671,
+                9699
+            ],
+            [
+                9712,
+                9712
+            ],
+            [
+                9731,
+                9738
+            ],
+            [
+                9761,
+                9767
+            ],
+            [
+                9769,
+                9769
+            ],
+            [
+                9811,
+                9819
+            ],
+            [
+                9823,
+                9823
+            ],
+            [
+                9833,
+                9833
+            ],
+            [
+                9836,
+                9836
+            ],
+            [
+                9940,
+                9940
+            ]
+        ]
+    },
+    {
+        "group": "10. T-cell and NK-cell neoplasms",
+        "morphText": "9700-9709, 9714-9719, 9724-9726, 9768, 9827-9831, 9834, 9837, 9948",
+        "ranges": [
+            [
+                9700,
+                9709
+            ],
+            [
+                9714,
+                9719
+            ],
+            [
+                9724,
+                9726
+            ],
+            [
+                9768,
+                9768
+            ],
+            [
+                9827,
+                9831
+            ],
+            [
+                9834,
+                9834
+            ],
+            [
+                9837,
+                9837
+            ],
+            [
+                9948,
+                9948
+            ]
+        ]
+    },
+    {
+        "group": "11. Hodgkin lymphoma",
+        "morphText": "9650-9667",
+        "ranges": [
+            [
+                9650,
+                9667
+            ]
+        ]
+    },
+    {
+        "group": "12. Mast-cell Tumors",
+        "morphText": "9740-9742",
+        "ranges": [
+            [
+                9740,
+                9742
+            ]
+        ]
+    },
+    {
+        "group": "13. Histiocytes and Accessory Lymphoid cells",
+        "morphText": "9749, 9750-9759",
+        "ranges": [
+            [
+                9749,
+                9749
+            ],
+            [
+                9750,
+                9759
+            ]
+        ]
+    },
+    {
+        "group": "14. Unspecified types of hematopoietic and lymphoid tissues",
+        "morphText": "9590-9591, 9596, 9727, 9760, 9800-9801, 9805-9809, 9820, 9832, 9835, 9965, 9967-9968, 9970-9971",
+        "ranges": [
+            [
+                9590,
+                9591
+            ],
+            [
+                9596,
+                9596
+            ],
+            [
+                9727,
+                9727
+            ],
+            [
+                9760,
+                9760
+            ],
+            [
+                9800,
+                9801
+            ],
+            [
+                9805,
+                9809
+            ],
+            [
+                9820,
+                9820
+            ],
+            [
+                9832,
+                9832
+            ],
+            [
+                9835,
+                9835
+            ],
+            [
+                9965,
+                9965
+            ],
+            [
+                9967,
+                9968
+            ],
+            [
+                9970,
+                9971
+            ]
+        ]
+    },
+    {
+        "group": "15. Kaposi sarcoma",
+        "morphText": "9140",
+        "ranges": [
+            [
+                9140,
+                9140
+            ]
+        ]
+    },
+    {
+        "group": "16. Other specified types of cancer",
+        "morphText": "8590-8671, 8720-8790, 8950-8983, 9000-9030, 9060-9105, 9260-9365, 9380-9539",
+        "ranges": [
+            [
+                8590,
+                8671
+            ],
+            [
+                8720,
+                8790
+            ],
+            [
+                8950,
+                8983
+            ],
+            [
+                9000,
+                9030
+            ],
+            [
+                9060,
+                9105
+            ],
+            [
+                9260,
+                9365
+            ],
+            [
+                9380,
+                9539
+            ]
+        ]
+    },
+    {
+        "group": "17. Unspecified types of cancer",
+        "morphText": "8000-8005",
+        "ranges": [
+            [
+                8000,
+                8005
+            ]
+        ]
+    }
+];
+
+function classifyPathologyGroup(morCode) {
+    if (morCode === null || morCode === undefined || isNaN(morCode)) return -1;
+    for (let i = 0; i < PATHOLOGY_GROUPS.length; i++) {
+        const ranges = PATHOLOGY_GROUPS[i].ranges;
+        for (let r = 0; r < ranges.length; r++) {
+            if (morCode >= ranges[r][0] && morCode <= ranges[r][1]) {
+                return i;
+            }
+        }
+    }
+    return -1;
+}
 
 function drawRoundedBox(ctx, x, y, width, height, radius, fillColor, strokeColor) {
     ctx.beginPath();
@@ -972,6 +1678,73 @@ const selectedDiseaseFilters = {
     group: new Set()
 };
 
+function resetImportedData() {
+    cancerRecords = [];
+    malePopData = null;
+    femalePopData = null;
+    generatedCSVRows = [];
+    generatedCSVFilename = 'export.csv';
+
+    document.getElementById('cancerFile').value = '';
+    document.getElementById('malePopFile').value = '';
+    document.getElementById('femalePopFile').value = '';
+
+    const cancerBadge = document.getElementById('cancerStatus');
+    cancerBadge.textContent = 'ยังไม่ได้เลือกไฟล์';
+    cancerBadge.classList.remove('ok');
+
+    const maleBadge = document.getElementById('malePopStatus');
+    maleBadge.textContent = 'ยังไม่ได้เลือกไฟล์';
+    maleBadge.classList.remove('ok');
+
+    const femaleBadge = document.getElementById('femalePopStatus');
+    femaleBadge.textContent = 'ยังไม่ได้เลือกไฟล์';
+    femaleBadge.classList.remove('ok');
+
+    initYearSelects();
+
+    selectedDiseaseFilters.icd10.clear();
+    selectedDiseaseFilters.site.clear();
+    selectedDiseaseFilters.group.clear();
+    document.getElementById('searchIcd10').value = '';
+    document.getElementById('searchSite').value = '';
+    document.getElementById('searchGroup').value = '';
+    initDiseaseFilterOptions();
+    selectedPathoDiseaseFilters.icd10.clear();
+    selectedPathoDiseaseFilters.site.clear();
+    selectedPathoDiseaseFilters.group.clear();
+    if (document.getElementById('searchPathoIcd10')) document.getElementById('searchPathoIcd10').value = '';
+    if (document.getElementById('searchPathoSite')) document.getElementById('searchPathoSite').value = '';
+    if (document.getElementById('searchPathoGroup')) document.getElementById('searchPathoGroup').value = '';
+    initPathoDiseaseFilterOptions();
+
+    document.getElementById('incResultPanel').style.display = 'none';
+    document.getElementById('incTableBody').innerHTML = '';
+    document.getElementById('numResultPanel').style.display = 'none';
+    document.getElementById('numTableBody').innerHTML = '';
+    document.getElementById('qcResultPanel').style.display = 'none';
+    document.getElementById('qcTableBody').innerHTML = '';
+    document.getElementById('exportBtn').disabled = true;
+
+    selectedMorphDiseaseFilters.icd10.clear();
+    selectedMorphDiseaseFilters.site.clear();
+    selectedMorphDiseaseFilters.group.clear();
+    if (document.getElementById('searchMorphIcd10')) document.getElementById('searchMorphIcd10').value = '';
+    if (document.getElementById('searchMorphSite')) document.getElementById('searchMorphSite').value = '';
+    if (document.getElementById('searchMorphGroup')) document.getElementById('searchMorphGroup').value = '';
+    initMorphDiseaseFilterOptions();
+
+    if (currentView === 'diseaseDetail') {
+        renderDiseaseDetail();
+    } else if (currentView === 'pathology') {
+        renderPathologyView();
+    } else if (currentView === 'morphology') {
+        renderMenu7Morphology();
+    } else {
+        renderDashboard();
+    }
+}
+
 function switchView(viewName) {
     currentView = viewName;
     document.getElementById('navDashboard').classList.toggle('active', viewName === 'dashboard');
@@ -979,26 +1752,33 @@ function switchView(viewName) {
     document.getElementById('navNumberCases').classList.toggle('active', viewName === 'numberCases');
     document.getElementById('navDataQuality').classList.toggle('active', viewName === 'dataQuality');
     document.getElementById('navDiseaseDetail').classList.toggle('active', viewName === 'diseaseDetail');
+    document.getElementById('navPathology').classList.toggle('active', viewName === 'pathology');
+    document.getElementById('navMorphology').classList.toggle('active', viewName === 'morphology');
 
     document.getElementById('dashboardView').style.display = (viewName === 'dashboard') ? 'block' : 'none';
     document.getElementById('incidenceView').style.display = (viewName === 'incidence') ? 'block' : 'none';
     document.getElementById('numberCasesView').style.display = (viewName === 'numberCases') ? 'block' : 'none';
     document.getElementById('dataQualityView').style.display = (viewName === 'dataQuality') ? 'block' : 'none';
     document.getElementById('diseaseDetailView').style.display = (viewName === 'diseaseDetail') ? 'block' : 'none';
+    document.getElementById('pathologyView').style.display = (viewName === 'pathology') ? 'block' : 'none';
+    document.getElementById('morphologyView').style.display = (viewName === 'morphology') ? 'block' : 'none';
 
     const isTableView = (viewName === 'incidence' || viewName === 'numberCases' || viewName === 'dataQuality');
-    const showCommonSex = (viewName === 'dashboard' || viewName === 'diseaseDetail');
+    const showCommonSex = (viewName === 'dashboard' || viewName === 'diseaseDetail' || viewName === 'pathology' || viewName === 'morphology');
     document.getElementById('dashSexGroup').style.display = showCommonSex ? 'block' : 'none';
-    document.getElementById('dashSexLabel').textContent = (viewName === 'diseaseDetail') ? 'เพศ (ข้อมูลรายโรค)' : 'เพศ (หน้าหลัก)';
+    document.getElementById('dashSexLabel').textContent = (viewName === 'diseaseDetail')
+        ? 'เพศ (ข้อมูลรายโรค)'
+        : (viewName === 'pathology' ? 'เพศ (Pathological group)' : (viewName === 'morphology' ? 'เพศ (Morphology)' : 'เพศ (หน้าหลัก)'));
 
     document.getElementById('refreshDashBtn').style.display = (viewName === 'dashboard') ? 'inline-block' : 'none';
     document.getElementById('refreshDiseaseBtn').style.display = (viewName === 'diseaseDetail') ? 'inline-block' : 'none';
+    document.getElementById('refreshPathoBtn').style.display = (viewName === 'pathology') ? 'inline-block' : 'none';
 
     document.getElementById('tableSexGroup').style.display = isTableView ? 'block' : 'none';
     document.getElementById('calcIncBtn').style.display = (viewName === 'incidence') ? 'inline-block' : 'none';
     document.getElementById('calcNumBtn').style.display = (viewName === 'numberCases') ? 'inline-block' : 'none';
     document.getElementById('calcQcBtn').style.display = (viewName === 'dataQuality') ? 'inline-block' : 'none';
-    document.getElementById('exportBtn').style.display = isTableView ? 'inline-block' : 'none';
+    document.getElementById('exportBtn').style.display = (isTableView || viewName === 'pathology' || viewName === 'morphology') ? 'inline-block' : 'none';
     document.getElementById('exportBtn').disabled = true;
 
     if (viewName === 'dashboard') {
@@ -1006,6 +1786,12 @@ function switchView(viewName) {
     } else if (viewName === 'diseaseDetail') {
         initDiseaseFilterOptions();
         renderDiseaseDetail();
+    } else if (viewName === 'pathology') {
+        initPathoDiseaseFilterOptions();
+        renderPathologyView();
+    } else if (viewName === 'morphology') {
+        initMorphDiseaseFilterOptions();
+        renderMenu7Morphology();
     } else if (viewName === 'incidence' && cancerRecords.length > 0) {
         const sex = parseInt(document.getElementById('sexFilter').value, 10);
         if ((sex === 1 && malePopData) || (sex === 2 && femalePopData)) {
@@ -1023,6 +1809,10 @@ function onFilterChange() {
         renderDashboard();
     } else if (currentView === 'diseaseDetail') {
         renderDiseaseDetail();
+    } else if (currentView === 'pathology') {
+        renderPathologyView();
+    } else if (currentView === 'morphology') {
+        renderMenu7Morphology();
     } else if (currentView === 'incidence' && cancerRecords.length > 0) {
         const sex = parseInt(document.getElementById('sexFilter').value, 10);
         if ((sex === 1 && malePopData) || (sex === 2 && femalePopData)) calculateIncidence();
@@ -1186,7 +1976,11 @@ document.getElementById('cancerFile').addEventListener('change', function(e) {
         badge.classList.add('ok');
 
         selectedDiseaseFilters.icd10.clear();
+        selectedPathoDiseaseFilters.icd10.clear();
+        selectedMorphDiseaseFilters.icd10.clear();
         initDiseaseFilterOptions();
+        initPathoDiseaseFilterOptions();
+        initMorphDiseaseFilterOptions();
         onFilterChange();
     });
 });
@@ -2092,12 +2886,22 @@ function renderDiseaseDetail() {
         type: 'bar',
         data: {
             labels: ['HV% ชาย', 'HV% หญิง', 'DCO% ชาย', 'DCO% หญิง'],
-            datasets: [{
-                label: 'ร้อยละ (%)',
-                data: [hvMalePct, hvFemalePct, dcoMalePct, dcoFemalePct],
-                yAxisID: 'yDco',
-                backgroundColor: ['#2563eb', '#ec4899', '#0284c7', '#e11d48']
-            }]
+            datasets: [
+                {
+                    label: 'HV% (แกนซ้าย Max 100%)',
+                    data: [hvMalePct, hvFemalePct, null, null],
+                    yAxisID: 'y',
+                    backgroundColor: ['#2563eb', '#ec4899', 'transparent', 'transparent'],
+                    grouped: false
+                },
+                {
+                    label: 'DCO% (แกนขวา Max 20%)',
+                    data: [null, null, dcoMalePct, dcoFemalePct],
+                    yAxisID: 'yDco',
+                    backgroundColor: ['transparent', 'transparent', '#0284c7', '#e11d48'],
+                    grouped: false
+                }
+            ]
         },
         options: {
             responsive: true,
@@ -2259,6 +3063,443 @@ function renderDiseaseDetail() {
             }
         }
     });
+}
+
+
+/* ==================== ส่วนเมนูที่ 6: Pathological group ==================== */
+const selectedPathoDiseaseFilters = {
+    icd10: new Set(),
+    site: new Set(),
+    group: new Set()
+};
+
+function initPathoDiseaseFilterOptions() {
+    const icdSet = new Set();
+    cancerRecords.forEach(r => {
+        if (r.i10) icdSet.add(r.i10);
+    });
+    const sortedIcd = Array.from(icdSet).sort();
+    const listIcdEl = document.getElementById('listPathoIcd10');
+
+    if (!listIcdEl) return;
+
+    if (sortedIcd.length === 0) {
+        listIcdEl.innerHTML = '<div style="font-size: 0.74rem; color: #64748b; padding: 6px;">ยังไม่มีข้อมูลรหัส I10 (กรุณาอัปโหลดไฟล์ทะเบียนมะเร็ง)</div>';
+    } else {
+        listIcdEl.innerHTML = sortedIcd.map(code => {
+            const checked = selectedPathoDiseaseFilters.icd10.has(code) ? 'checked' : '';
+            const safeAttr = code.replace(/"/g, '&quot;');
+            return `<label class="multi-item" data-search="${safeAttr.toLowerCase()}">
+                <input type="checkbox" value="${safeAttr}" ${checked} onchange="onPathoDiseaseCheckboxChange('icd10', this)">
+                <span>${code}</span>
+            </label>`;
+        }).join('');
+    }
+
+    const siteOptions = [
+        { key: 'ALL', label: 'All sites (ALL)' },
+        { key: 'ALLbC44', label: 'All sites but C44 (ALLbC44)' },
+        ...CANCER_SITES.map((s, idx) => ({
+            key: `IDX_${idx}`,
+            label: `${s.site} (${s.icd})`
+        }))
+    ];
+    const listSiteEl = document.getElementById('listPathoSite');
+    listSiteEl.innerHTML = siteOptions.map(opt => {
+        const checked = selectedPathoDiseaseFilters.site.has(opt.key) ? 'checked' : '';
+        return `<label class="multi-item" data-search="${opt.label.toLowerCase()}">
+            <input type="checkbox" value="${opt.key}" ${checked} onchange="onPathoDiseaseCheckboxChange('site', this)">
+            <span>${opt.label}</span>
+        </label>`;
+    }).join('');
+
+    const listGroupEl = document.getElementById('listPathoGroup');
+    listGroupEl.innerHTML = QC_GROUPS.map(g => {
+        const displayLabel = `${g.label} - ${g.group}`;
+        const checked = selectedPathoDiseaseFilters.group.has(g.group) ? 'checked' : '';
+        const safeGroup = g.group.replace(/"/g, '&quot;');
+        return `<label class="multi-item" data-search="${displayLabel.toLowerCase()}">
+            <input type="checkbox" value="${safeGroup}" ${checked} onchange="onPathoDiseaseCheckboxChange('group', this)">
+            <span>${displayLabel}</span>
+        </label>`;
+    }).join('');
+
+    filterPathoCheckboxList('icd10');
+    filterPathoCheckboxList('site');
+    filterPathoCheckboxList('group');
+    updatePathoDiseaseFilterSummaries();
+}
+
+function onPathoDiseaseCheckboxChange(category, checkboxEl) {
+    const val = checkboxEl.value;
+    if (checkboxEl.checked) {
+        selectedPathoDiseaseFilters[category].add(val);
+    } else {
+        selectedPathoDiseaseFilters[category].delete(val);
+    }
+    updatePathoDiseaseFilterSummaries();
+    renderPathologyView();
+}
+
+function selectAllPathoInBox(category, isSelectAll) {
+    const listId = category === 'icd10' ? 'listPathoIcd10' : (category === 'site' ? 'listPathoSite' : 'listPathoGroup');
+    const items = document.querySelectorAll(`#${listId} .multi-item`);
+    selectedPathoDiseaseFilters[category].clear();
+
+    items.forEach(item => {
+        if (item.style.display === 'none' && isSelectAll) return;
+        const cb = item.querySelector('input[type="checkbox"]');
+        if (!cb) return;
+        cb.checked = isSelectAll;
+        if (isSelectAll) selectedPathoDiseaseFilters[category].add(cb.value);
+    });
+
+    updatePathoDiseaseFilterSummaries();
+    renderPathologyView();
+}
+
+function filterPathoCheckboxList(category) {
+    const inputId = category === 'icd10' ? 'searchPathoIcd10' : (category === 'site' ? 'searchPathoSite' : 'searchPathoGroup');
+    const listId = category === 'icd10' ? 'listPathoIcd10' : (category === 'site' ? 'listPathoSite' : 'listPathoGroup');
+    const inputEl = document.getElementById(inputId);
+    const query = (inputEl ? inputEl.value : '').trim().toLowerCase();
+    const items = document.querySelectorAll(`#${listId} .multi-item`);
+    items.forEach(item => {
+        const text = item.getAttribute('data-search') || '';
+        item.style.display = (!query || text.includes(query)) ? 'flex' : 'none';
+    });
+}
+
+function clearPathoDiseaseFilters() {
+    selectedPathoDiseaseFilters.icd10.clear();
+    selectedPathoDiseaseFilters.site.clear();
+    selectedPathoDiseaseFilters.group.clear();
+    const s1 = document.getElementById('searchPathoIcd10');
+    const s2 = document.getElementById('searchPathoSite');
+    const s3 = document.getElementById('searchPathoGroup');
+    if (s1) s1.value = '';
+    if (s2) s2.value = '';
+    if (s3) s3.value = '';
+    initPathoDiseaseFilterOptions();
+    renderPathologyView();
+}
+
+function updatePathoDiseaseFilterSummaries() {
+    const icdArr = Array.from(selectedPathoDiseaseFilters.icd10);
+    const siteArr = Array.from(selectedPathoDiseaseFilters.site);
+    const groupArr = Array.from(selectedPathoDiseaseFilters.group);
+
+    const sumIcd = document.getElementById('summaryPathoIcd10');
+    const sumSite = document.getElementById('summaryPathoSite');
+    const sumGroup = document.getElementById('summaryPathoGroup');
+    if (!sumIcd || !sumSite || !sumGroup) return;
+
+    sumIcd.textContent = icdArr.length
+        ? `เลือกแล้ว (${icdArr.length}): ${icdArr.slice(0, 6).join(', ')}${icdArr.length > 6 ? '...' : ''}`
+        : 'เลือกแล้ว: ทั้งหมด (ไม่ได้จำกัดรหัส)';
+
+    const siteLabels = siteArr.map(k => {
+        if (k === 'ALL') return 'All sites';
+        if (k === 'ALLbC44') return 'All sites but C44';
+        const idx = parseInt(k.replace('IDX_', ''), 10);
+        return CANCER_SITES[idx] ? CANCER_SITES[idx].site : k;
+    });
+    sumSite.textContent = siteLabels.length
+        ? `เลือกแล้ว (${siteLabels.length}): ${siteLabels.slice(0, 4).join(', ')}${siteLabels.length > 4 ? '...' : ''}`
+        : 'เลือกแล้ว: ทั้งหมด (ไม่ได้จำกัด Site)';
+
+    const groupLabels = groupArr.map(gKey => {
+        const found = QC_GROUPS.find(g => g.group === gKey);
+        return found ? `${found.label} (${found.group})` : gKey;
+    });
+    sumGroup.textContent = groupLabels.length
+        ? `เลือกแล้ว (${groupLabels.length}): ${groupLabels.slice(0, 3).join(', ')}${groupLabels.length > 3 ? '...' : ''}`
+        : 'เลือกแล้ว: ทั้งหมด (ไม่ได้จำกัดกลุ่มโรค)';
+}
+
+function matchesPathoDiseaseFilters(rec) {
+    const icdSet = selectedPathoDiseaseFilters.icd10;
+    const siteSet = selectedPathoDiseaseFilters.site;
+    const groupSet = selectedPathoDiseaseFilters.group;
+
+    if (icdSet.size > 0 && !icdSet.has(rec.i10)) {
+        return false;
+    }
+
+    if (siteSet.size > 0) {
+        const siteIdx = mapSiteIndex(rec, rec.sex);
+        if (siteIdx === -1) return false;
+        const siteObj = CANCER_SITES[siteIdx];
+        let matchedSite = false;
+        if (siteSet.has('ALL')) matchedSite = true;
+        if (siteSet.has('ALLbC44') && siteObj && siteObj.icd !== 'C44') matchedSite = true;
+        if (siteSet.has(`IDX_${siteIdx}`)) matchedSite = true;
+        if (!matchedSite) return false;
+    }
+
+    if (groupSet.size > 0) {
+        const recGroups = getQcGroupKeysForRecord(rec);
+        const matchedGroup = recGroups.some(gk => groupSet.has(gk));
+        if (!matchedGroup) return false;
+    }
+
+    return true;
+}
+
+function renderPathologyView() {
+    updatePathoDiseaseFilterSummaries();
+
+    const startYear = parseInt(document.getElementById('startYear').value, 10);
+    const endYear = parseInt(document.getElementById('endYear').value, 10);
+    const sexVal = document.getElementById('dashSexFilter').value;
+
+    const filtered = cancerRecords.filter(r => {
+        if (!r.year || r.year < startYear || r.year > endYear) return false;
+        if (sexVal !== 'all' && String(r.sex) !== sexVal) return false;
+        return matchesPathoDiseaseFilters(r);
+    });
+
+    const totalAll = filtered.length;
+    const totalMaleAll = filtered.filter(r => r.sex === 1).length;
+    const totalFemaleAll = filtered.filter(r => r.sex === 2).length;
+
+    const stats = PATHOLOGY_GROUPS.map(g => ({
+        group: g.group,
+        morphText: g.morphText,
+        maleN: 0,
+        femaleN: 0,
+        totalN: 0
+    }));
+
+    let unmatchedMale = 0;
+    let unmatchedFemale = 0;
+    let unmatchedTotal = 0;
+
+    filtered.forEach(r => {
+        const gIdx = classifyPathologyGroup(r.mor);
+        if (gIdx === -1) {
+            unmatchedTotal++;
+            if (r.sex === 1) unmatchedMale++;
+            else if (r.sex === 2) unmatchedFemale++;
+        } else {
+            stats[gIdx].totalN++;
+            if (r.sex === 1) stats[gIdx].maleN++;
+            else if (r.sex === 2) stats[gIdx].femaleN++;
+        }
+    });
+
+    const matchedTotal = totalAll - unmatchedTotal;
+    const pct = (n, d) => d > 0 ? Number(((n / d) * 100).toFixed(2)) : 0;
+    const sexLabel = sexVal === '1' ? 'เฉพาะเพศชาย' : (sexVal === '2' ? 'เฉพาะเพศหญิง' : 'ทั้งหมด');
+
+    const activeBar = document.getElementById('pathoActiveFilterBar');
+    if (activeBar) {
+        activeBar.innerHTML = `
+            <span>ช่วงปี: <strong>${startYear} - ${endYear}</strong></span>
+            <span>เพศ: <strong>${sexLabel}</strong></span>
+            <span>ICD10 ที่เลือก: <strong>${selectedPathoDiseaseFilters.icd10.size ? Array.from(selectedPathoDiseaseFilters.icd10).join(', ') : 'ทั้งหมด'}</strong></span>
+            <span>Site ที่เลือก: <strong>${selectedPathoDiseaseFilters.site.size ? `${selectedPathoDiseaseFilters.site.size} รายการ` : 'ทั้งหมด'}</strong></span>
+            <span>กลุ่มโรคที่เลือก: <strong>${selectedPathoDiseaseFilters.group.size ? Array.from(selectedPathoDiseaseFilters.group).join(', ') : 'ทั้งหมด'}</strong></span>
+        `;
+    }
+
+    document.getElementById('pathoKpiTotal').textContent = totalAll.toLocaleString();
+    document.getElementById('pathoKpiSub').textContent = `ช่วงปี: ${startYear} - ${endYear} (${sexLabel})`;
+    document.getElementById('pathoKpiMatched').textContent = matchedTotal.toLocaleString();
+    document.getElementById('pathoKpiMatchedPct').textContent = `${pct(matchedTotal, totalAll).toFixed(1)}% ของผู้ป่วยทั้งหมด`;
+
+    const sortedByCount = [...stats].sort((a, b) => b.totalN - a.totalN);
+    const top1 = sortedByCount[0];
+    if (top1 && top1.totalN > 0) {
+        document.getElementById('pathoKpiTop1').textContent = top1.group;
+        document.getElementById('pathoKpiTop1Sub').textContent = `${top1.totalN.toLocaleString()} ราย (${pct(top1.totalN, totalAll).toFixed(1)}%)`;
+    } else {
+        document.getElementById('pathoKpiTop1').textContent = '-';
+        document.getElementById('pathoKpiTop1Sub').textContent = '0 ราย (0.0%)';
+    }
+
+    document.getElementById('pathoKpiUnmatched').textContent = unmatchedTotal.toLocaleString();
+    document.getElementById('pathoKpiUnmatchedPct').textContent = `${pct(unmatchedTotal, totalAll).toFixed(1)}%`;
+
+    // กราฟหลัก: ร้อยละของกลุ่มพยาธิวิทยา
+    const labelsAll = stats.map(s => s.group);
+    const pctSeriesAll = stats.map(s => pct(s.totalN, totalAll));
+    if (unmatchedTotal > 0) {
+        labelsAll.push('อื่นๆ / ไม่ระบุรหัส MOR');
+        pctSeriesAll.push(pct(unmatchedTotal, totalAll));
+    }
+
+    setChart('mainPathoPctBarChart', {
+        type: 'bar',
+        data: {
+            labels: labelsAll,
+            datasets: [{
+                label: 'ร้อยละ (%)',
+                data: pctSeriesAll,
+                backgroundColor: '#2563eb',
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            indexAxis: 'y',
+            layout: { padding: { right: 48 } },
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    ticks: { callback: v => v + '%' }
+                }
+            },
+            plugins: {
+                legend: { display: false },
+                barValueLabels: { enabled: true, suffix: '%', decimals: 1 },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => {
+                            const idx = ctx.dataIndex;
+                            const countVal = idx < stats.length ? stats[idx].totalN : unmatchedTotal;
+                            return `ร้อยละ: ${Number(ctx.raw).toFixed(2)}% (${countVal.toLocaleString()} ราย)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // กราฟเปรียบเทียบชาย - หญิง
+    const labelsGender = stats.map(s => s.group);
+    const malePctSeries = stats.map(s => pct(s.maleN, totalMaleAll));
+    const femalePctSeries = stats.map(s => pct(s.femaleN, totalFemaleAll));
+
+    setChart('mainPathoGenderChart', {
+        type: 'bar',
+        data: {
+            labels: labelsGender,
+            datasets: [
+                { label: 'เพศชาย (%)', data: malePctSeries, backgroundColor: '#2563eb' },
+                { label: 'เพศหญิง (%)', data: femalePctSeries, backgroundColor: '#ec4899' }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            indexAxis: 'y',
+            scales: {
+                x: { beginAtZero: true, ticks: { callback: v => v + '%' } }
+            },
+            plugins: {
+                barValueLabels: { enabled: false },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => `${ctx.dataset.label}: ${Number(ctx.raw).toFixed(2)}%`
+                    }
+                }
+            }
+        }
+    });
+
+    // กราฟวงกลม Top 8 กลุ่มพยาธิวิทยา
+    const top8 = sortedByCount.slice(0, 8).filter(s => s.totalN > 0);
+    const otherSum = totalAll - top8.reduce((acc, item) => acc + item.totalN, 0);
+    const pieLabels = top8.map(s => `${s.group} (${pct(s.totalN, totalAll).toFixed(1)}%)`);
+    const pieData = top8.map(s => s.totalN);
+    if (otherSum > 0) {
+        pieLabels.push(`กลุ่มอื่นๆ (${pct(otherSum, totalAll).toFixed(1)}%)`);
+        pieData.push(otherSum);
+    }
+
+    setChart('mainPathoPieChart', {
+        type: 'doughnut',
+        data: {
+            labels: pieLabels,
+            datasets: [{
+                data: pieData,
+                backgroundColor: [
+                    '#2563eb', '#ec4899', '#10b981', '#f59e0b',
+                    '#8b5cf6', '#06b6d4', '#ef4444', '#6366f1', '#94a3b8'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                barValueLabels: { enabled: false },
+                legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => {
+                            const val = Number(ctx.raw) || 0;
+                            return `${ctx.label.split(' (')[0]}: ${val.toLocaleString()} ราย (${pct(val, totalAll).toFixed(2)}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // ตารางสรุปและ Export CSV
+    const tbody = document.getElementById('mainPathoTableBody');
+    tbody.innerHTML = '';
+    generatedCSVRows = [['Group', 'Male_N', 'Male_Pct', 'Female_N', 'Female_Pct', 'Total_N', 'Total_Pct', 'ICD_O_3_Morphology']];
+    generatedCSVFilename = `Pathological_Group_${startYear}t${endYear}.csv`;
+
+    stats.forEach(st => {
+        const mPct = pct(st.maleN, totalMaleAll).toFixed(2);
+        const fPct = pct(st.femaleN, totalFemaleAll).toFixed(2);
+        const tPct = pct(st.totalN, totalAll).toFixed(2);
+        generatedCSVRows.push([st.group, st.maleN, mPct, st.femaleN, fPct, st.totalN, tPct, st.morphText]);
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td style="font-weight: 600; max-width: none;">${st.group}</td>
+            <td>${st.maleN.toLocaleString()}</td>
+            <td>${mPct}%</td>
+            <td>${st.femaleN.toLocaleString()}</td>
+            <td>${fPct}%</td>
+            <td style="font-weight: 700;">${st.totalN.toLocaleString()}</td>
+            <td style="font-weight: 700; color: #1e3a8a;">${tPct}%</td>
+            <td style="font-family: monospace; white-space: normal; max-width: 320px;">${st.morphText}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    if (unmatchedTotal > 0) {
+        const mPct = pct(unmatchedMale, totalMaleAll).toFixed(2);
+        const fPct = pct(unmatchedFemale, totalFemaleAll).toFixed(2);
+        const tPct = pct(unmatchedTotal, totalAll).toFixed(2);
+        generatedCSVRows.push(['อื่นๆ / ไม่ระบุรหัส MOR', unmatchedMale, mPct, unmatchedFemale, fPct, unmatchedTotal, tPct, '-']);
+        const trUnk = document.createElement('tr');
+        trUnk.innerHTML = `
+            <td style="font-weight: 600; color: #64748b; max-width: none;">อื่นๆ / ไม่ระบุรหัส MOR</td>
+            <td>${unmatchedMale.toLocaleString()}</td>
+            <td>${mPct}%</td>
+            <td>${unmatchedFemale.toLocaleString()}</td>
+            <td>${fPct}%</td>
+            <td>${unmatchedTotal.toLocaleString()}</td>
+            <td>${tPct}%</td>
+            <td>-</td>
+        `;
+        tbody.appendChild(trUnk);
+    }
+
+    const trTotal = document.createElement('tr');
+    trTotal.className = 'total-row';
+    trTotal.innerHTML = `
+        <td style="max-width: none;">รวมทั้งหมด (Total)</td>
+        <td>${totalMaleAll.toLocaleString()}</td>
+        <td>${totalMaleAll > 0 ? '100.00%' : '0.00%'}</td>
+        <td>${totalFemaleAll.toLocaleString()}</td>
+        <td>${totalFemaleAll > 0 ? '100.00%' : '0.00%'}</td>
+        <td>${totalAll.toLocaleString()}</td>
+        <td>${totalAll > 0 ? '100.00%' : '0.00%'}</td>
+        <td>-</td>
+    `;
+    tbody.appendChild(trTotal);
+    generatedCSVRows.push(['Total', totalMaleAll, totalMaleAll > 0 ? '100.00' : '0.00', totalFemaleAll, totalFemaleAll > 0 ? '100.00' : '0.00', totalAll, totalAll > 0 ? '100.00' : '0.00', '']);
+
+    document.getElementById('exportBtn').disabled = (totalAll === 0);
 }
 
 function buildSiteCountsAndTotals(sex, startYear, endYear) {
@@ -2745,9 +3986,974 @@ function exportCSV() {
     document.body.removeChild(link);
 }
 
+
+/* ==================== ส่วนเมนูที่ 7: Morphology ==================== */
+const MORPHOLOGY_LOOKUP = {
+  "8000": "Neoplasm, malignant",
+  "8001": "Tumor cells, malignant",
+  "8002": "Malignant tumor, small cell type",
+  "8003": "Malignant tumor, giant cell type",
+  "8004": "Malignant tumor, spindle cell type",
+  "8005": "Malignant tumor, clear cell type",
+  "8010": "Carcinoma, NOS",
+  "8011": "Epithelioma, malignant",
+  "8012": "Large cell carcinoma, NOS",
+  "8013": "Large cell neuroendocrine carcinoma",
+  "8014": "Large cell carcinoma with rhabdoid phenotype",
+  "8015": "Glassy cell carcinoma",
+  "8020": "Carcinoma, undifferentiated, NOS",
+  "8021": "Carcinoma, anaplastic, NOS",
+  "8022": "Pleomorphic carcinoma",
+  "8023": "NUT carcinoma",
+  "8030": "Giant cell and spindle cell carcinoma",
+  "8031": "Giant cell carcinoma",
+  "8032": "Spindle cell carcinoma, NOS",
+  "8033": "Pseudosarcomatous carcinoma",
+  "8034": "Polygonal cell carcinoma",
+  "8035": "Carcinoma with osteoclast-like giant cells",
+  "8041": "Small cell carcinoma, NOS",
+  "8042": "Oat cell carcinoma",
+  "8043": "Small cell carcinoma, fusiform cell",
+  "8044": "Small cell carcinoma, intermediate cell",
+  "8045": "Combined small cell carcinoma",
+  "8046": "Non-small cell carcinoma",
+  "8050": "Papillary carcinoma, NOS",
+  "8051": "Verrucous carcinoma, NOS",
+  "8052": "Papillary squamous cell carcinoma",
+  "8070": "Squamous cell carcinoma, NOS",
+  "8071": "Squamous cell carcinoma, keratinizing, NOS",
+  "8072": "Squamous cell carcinoma, large cell, nonkeratinizing, NOS",
+  "8073": "Squamous cell carcinoma, small cell, nonkeratinizing",
+  "8074": "Squamous cell carcinoma, spindle cell",
+  "8075": "Squamous cell carcinoma, adenoid",
+  "8076": "Squamous cell carcinoma, microinvasive",
+  "8077": "Squamous intraepithelial neoplasia, lowgrade",
+  "8078": "Squamous cell carcinoma with horn formation",
+  "8082": "Lymphoepithelial carcinoma",
+  "8083": "Basaloid squamous cell carcinoma",
+  "8084": "Squamous cell carcinoma, clear cell type",
+  "8085": "Squamous cell carcinoma, HPV positive",
+  "8086": "Squamous cell carcinoma, HPV negative",
+  "8090": "Basal cell carcinoma, NOS",
+  "8091": "Multifocal superficial basal cell carcinoma",
+  "8092": "Infiltrating basal cell carcinoma, NOS",
+  "8093": "Basal cell carcinoma, fibroepithelial",
+  "8094": "Basosquamous carcinoma",
+  "8095": "Metatypical carcinoma",
+  "8097": "Basal cell carcinoma, nodular",
+  "8098": "Adenoid basal carcinoma",
+  "8102": "Trichilemmocarcinoma",
+  "8110": "Pilomatrix carcinoma",
+  "8120": "Transitional cell carcinoma, NOS",
+  "8121": "Schneiderian carcinoma",
+  "8122": "Transitional cell carcinoma, spindle cell",
+  "8123": "Basaloid carcinoma",
+  "8124": "Cloacogenic carcinoma",
+  "8130": "Papillary transitional cell carcinoma",
+  "8131": "Transitional cell carcinoma, micropapillary",
+  "8140": "Adenocarcinoma, NOS",
+  "8141": "Scirrhous adenocarcinoma",
+  "8142": "Linitis plastica",
+  "8143": "Superficial spreading adenocarcinoma",
+  "8144": "Adenocarcinoma, intestinal type",
+  "8145": "Carcinoma, diffuse type",
+  "8147": "Basal cell adenocarcinoma",
+  "8148": "Glandular intraepithelial neoplasia",
+  "8150": "Pancreatic endocrine tumor",
+  "8151": "Insulinoma, malignant",
+  "8152": "Enteroglucagonoma(Glucagonoma), malignant",
+  "8153": "Gastrinoma, malignant",
+  "8154": "Mixed pancreatic endrcrine and exocrine tumor, malignant",
+  "8155": "Vipoma, malignant",
+  "8156": "Somatostatinoma, malignant",
+  "8160": "Cholangiocarcinoma",
+  "8161": "Bile duct cystadenocarcinoma",
+  "8162": "Klatskin tumor",
+  "8163": "Pancreatiobilliary-type carcinoma",
+  "8170": "Hepatocellular carcinoma, NOS",
+  "8171": "Hepatocellular carcinoma, fibrolamellar",
+  "8172": "Hepatocellular carcinoma, scirrhous",
+  "8173": "Hepatocellular carcinoma, spindle cell variant",
+  "8174": "Hepatocellular carcinoma, clear cell type",
+  "8175": "Hepatocellular carcinoma, pleomorphic type",
+  "8180": "Combined hepatocellular carcinoma and cholangiocarcinoma",
+  "8190": "Trabecular adenocarcinoma",
+  "8200": "Adenoid cystic carcinoma",
+  "8201": "Cribriform carcinoma, NOS",
+  "8210": "Adenocarcinoma in adenomatous polyp",
+  "8211": "Tubular adenocarcinoma",
+  "8213": "Serrated adenocarcinoma",
+  "8214": "Parietal cell carcinoma",
+  "8215": "Adenocarcinoma of anal glands",
+  "8220": "Adenocarcinoma in adenomatous polyposis coli",
+  "8221": "Adenocarcinoma in multiple adenomatous polyps",
+  "8230": "Solid carcinoma, NOS",
+  "8231": "Carcinoma simplex",
+  "8240": "Carcinoid tumor, NOS",
+  "8241": "Enterochromaffin cell carcinoid",
+  "8242": "Enterochromaffin-like cell tumor, malignant",
+  "8243": "Goblet cell carcinoid",
+  "8244": "Mixed adenoneuroendocrine carcinoma",
+  "8245": "Adenocarcinoid tumor",
+  "8246": "Neuroendocrine carcinoma, NOS",
+  "8247": "Merkel cell carcinoma",
+  "8249": "Neuroendocrine carcinoma",
+  "8250": "Bronchiolo-alveolar adenocarcinoma, NOS",
+  "8251": "Alveolar adenocarcinoma",
+  "8252": "Bronchiolo-alveolar carcinoma, non- mucinous",
+  "8253": "Bronchiolo-alveolar carcinoma, mucinous",
+  "8254": "Bronchiolo-alveolar carcinoma, mixed mucinous /non-mucinous",
+  "8255": "Adenocarcinoma with mixed subtypes",
+  "8256": "Minimally invasive adenocarcinoma, non-mucinous",
+  "8257": "Minimally invasive adenocarcinoma, mucinous",
+  "8260": "Papillary adenocarcinoma, NOS",
+  "8261": "Adenocarcinoma in villous adenoma",
+  "8262": "Villous adenocarcinoma",
+  "8263": "Adenocarcinoma in tubulovillous adenoma",
+  "8265": "Micropapillary carcinoma, NOS",
+  "8270": "Chromophobe carcinoma",
+  "8272": "Pituitary carcinoma, NOS",
+  "8280": "Acidophil carcinoma",
+  "8281": "Mixed acidophil-basophil carcinoma",
+  "8290": "Oxyphilic adenocarcinoma",
+  "8300": "Basophil carcinoma",
+  "8310": "Clear cell adenocarcinoma, NOS",
+  "8312": "Renal cell carcinoma, NOS",
+  "8313": "Clear cell adenocarcinofibroma",
+  "8314": "Lipid-rich carcinoma",
+  "8315": "Glycogen-rich carcinoma",
+  "8316": "Cyst-associated renal cell carcinoma",
+  "8317": "Renal cell carcinoma, chromophobe type",
+  "8318": "Renal cell carcinoma, sarcomatoid",
+  "8319": "Collecting duct carcinoma",
+  "8320": "Granular cell carcinoma",
+  "8322": "Water-clear cell adenocarcinoma",
+  "8323": "Mixed cell adenocarcinoma",
+  "8330": "Follicular adenocarcinoma, NOS",
+  "8331": "Follicular adenocarcinoma, well differentiated",
+  "8332": "Follicular adenocarcinoma, trabecular",
+  "8333": "Fetal adenocarcinoma",
+  "8335": "Follicular carcinoma, minimally invasive",
+  "8337": "Insular carcinoma",
+  "8339": "Follicular carcinoma, encapsulated, angioinvasive",
+  "8340": "Papillary carcinoma, follicular variant",
+  "8341": "Papillary microcarcinoma",
+  "8342": "Papillary carcinoma, oxyphilic cell",
+  "8343": "Papillary carcinoma, encapsulated",
+  "8344": "Papillary carcinoma, columnar cell",
+  "8345": "Medullary carcinoma with amyloid stroma",
+  "8346": "Mixed medullary-follicular carcinoma",
+  "8347": "Mixed medullary-papillary carcinoma",
+  "8350": "Nonencapsulated sclerosing carcinoma",
+  "8370": "Adrenal cortical carcinoma",
+  "8380": "Endometrioid adenocarcinoma, NOS",
+  "8381": "Endometrioid adenofibroma, malignant",
+  "8382": "Endometrioid adenocarcinoma, secretory variant",
+  "8383": "Endometrioid adenocarcinoma, ciliated cell variant",
+  "8384": "Adenocarcinoma, endocervical type",
+  "8390": "Skin appendage carcinoma",
+  "8400": "Sweat gland adenocarcinoma",
+  "8401": "Apocrine adenocarcinoma",
+  "8402": "Nodular hidradenoma, malignant",
+  "8403": "Malignant eccrine spiradenoma",
+  "8407": "Sclerosing sweat duct carcinoma",
+  "8408": "Eccrine papillary adenocarcinoma",
+  "8409": "Eccrine poroma, malignant",
+  "8410": "Sebaceous adenocarcinoma",
+  "8413": "Eccrine adenocarcinoma",
+  "8420": "Ceruminous adenocarcinoma",
+  "8430": "Mucoepidermoid carcinoma",
+  "8440": "Cystadenocarcinoma, NOS",
+  "8441": "Serous cystadenocarcinoma, NOS",
+  "8450": "Papillary cystadenocarcinoma, NOS",
+  "8452": "Solid pseudopapillary carcinoma",
+  "8453": "Intraductal papillary-mucinous carcinoma, invasive",
+  "8460": "Papillary serous cystadenocarcinoma",
+  "8461": "Serous surface papillary carcinoma",
+  "8470": "Mucinous cystadenocarcinoma, NOS",
+  "8471": "Papillary mucinous cystadenocarcinoma",
+  "8480": "Mucinous adenocarcinoma",
+  "8481": "Mucin-producing adenocarcinoma",
+  "8482": "Mucinous adenocarcinoma, endocervical type",
+  "8490": "Signet ring cell carcinoma",
+  "8500": "Infiltrating duct carcinoma, NOS",
+  "8501": "Comedocarcinoma, NOS",
+  "8502": "Secretory carcinoma of breast",
+  "8503": "Intraductal papillary adenocarcinoma with invasion",
+  "8504": "Intracystic carcinoma, NOS",
+  "8507": "Invasive micropapillary carcinoma of breast",
+  "8508": "Cystic hypersecretory carcinoma",
+  "8509": "Solid papillary carcinoma with invasion",
+  "8510": "Medullary carcinoma, NOS",
+  "8512": "Medullary carcinoma with lymphoid stroma",
+  "8513": "Atypical medullary carcinoma",
+  "8514": "Duct carcinoma, desmoplastic type",
+  "8520": "Lobular carcinoma, NOS",
+  "8521": "Infiltrating ductular carcinoma",
+  "8522": "Infiltrating duct and lobular carcinoma",
+  "8523": "Infiltrating duct mixed with other types of carcinoma",
+  "8524": "Infiltrating lobular mixed with other types of carcinoma",
+  "8525": "Polymorphous low grade adenocarcinoma",
+  "8530": "Inflammatory carcinoma",
+  "8540": "Paget disease, mammary",
+  "8541": "Paget disease and infiltrating duct carcinoma of breast",
+  "8542": "Paget disease, extramammary (except Paget disease of bone)",
+  "8543": "Paget disease and intraductal carcinoma of breast",
+  "8550": "Acinar cell carcinoma",
+  "8551": "Acinar cell cystadenocarcinoma",
+  "8552": "Mixed acinar-ductal carcinoma",
+  "8560": "Adenosquamous carcinoma",
+  "8562": "Epithelial-myoepithelial carcinoma",
+  "8570": "Adenocarcinoma with squamous metaplasia",
+  "8571": "Adenocarcinoma with cartilaginous and osseous metaplasia",
+  "8572": "Adenocarcinoma with spindle cell metaplasia",
+  "8573": "Adenocarcinoma with apocrine metaplasia",
+  "8574": "Adenocarcinoma with neuroendocrine differentiation",
+  "8575": "Metaplastic carcinoma, NOS",
+  "8576": "Hepatoid adenocarcinoma",
+  "8580": "Thymoma, malignant, NOS",
+  "8581": "Thymoma, type A, malignant",
+  "8582": "Thymoma, type AB, malignant",
+  "8583": "Thymoma, type B1, malignant",
+  "8584": "Thymoma, type B2, malignant",
+  "8585": "Thymoma, type B3, malignant",
+  "8586": "Thymic carcinoma, NOS",
+  "8588": "Spindle epithelial tumor with thymus-like element",
+  "8589": "Carcinoma showing thymus-like element",
+  "8600": "Thecoma, malignant",
+  "8620": "Granulosa cell tumor, malignant",
+  "8630": "Androblastoma, malignant",
+  "8631": "Sertoli-Leydig cell tumor, poorly differentiated",
+  "8634": "Sertoli-Leydig cell, poorly diffn, with heterologous elements",
+  "8640": "Sertoli cell carcinoma",
+  "8650": "Leydig cell tumor, malignant",
+  "8670": "Steroid cell tumor, malignant",
+  "8680": "Paraganglioma, malignant",
+  "8681": "Sympathetic paraganglioma",
+  "8682": "Parasympathetic paraganglioma",
+  "8690": "Middle ear paraganglioma",
+  "8691": "Aortic body paraganglioma",
+  "8692": "Carotid body paraganglioma",
+  "8693": "Extra-adrenal paraganglioma, malignant",
+  "8700": "Pheochromocytoma, malignant",
+  "8710": "Glomangiosarcoma",
+  "8711": "Glomus tumor, malignant",
+  "8714": "PEComa",
+  "8720": "Malignant melanoma, NOS (except juvenile melanoma)",
+  "8721": "Nodular melanoma",
+  "8722": "Balloon cell melanoma",
+  "8723": "Malignant melanoma, regressing",
+  "8728": "Meningeal melanomatosis",
+  "8730": "Amelanotic melanoma",
+  "8740": "Malignant melanoma in junctional nevus",
+  "8741": "Malignant melanoma in precancerous melanosis",
+  "8742": "Lentigo maligna melanoma",
+  "8743": "Superficial spreading melanoma",
+  "8744": "Acral lentiginous melanoma, malignant",
+  "8745": "Desmoplastic melanoma, malignant",
+  "8746": "Mucosal lentiginous melanoma",
+  "8761": "Malignant melanoma in giant pigmented nevus",
+  "8770": "Mixed epithelioid and spindle cell melanoma",
+  "8771": "Epithelioid cell melanoma",
+  "8772": "Spindle cell melanoma, NOS",
+  "8773": "Spindle cell melanoma, type A",
+  "8774": "Spindle cell melanoma, type B",
+  "8780": "Blue nevus, malignant",
+  "8800": "Sarcoma, NOS",
+  "8801": "Spindle cell sarcoma",
+  "8802": "Giant cell sarcoma (except of bone)",
+  "8803": "Small cell sarcoma",
+  "8804": "Epithelioid sarcoma",
+  "8805": "Undifferentiated sarcoma",
+  "8806": "Desmoplastic small round cell tumor",
+  "8810": "Fibrosarcoma, NOS",
+  "8811": "Fibromyxosarcoma",
+  "8812": "Periosteal fibrosarcoma",
+  "8813": "Fascial fibrosarcoma",
+  "8814": "Infantile fibrosarcoma",
+  "8815": "Solitary fibrous tumor, malignant",
+  "8830": "Malignant fibrous histiocytoma",
+  "8832": "Dermatofibrosarcoma, NOS",
+  "8833": "Pigmented dermatofibrosarcoma protuberans",
+  "8840": "Myxosarcoma",
+  "8850": "Liposarcoma, NOS",
+  "8851": "Liposarcoma, well differentiated",
+  "8852": "Myxoid liposarcoma",
+  "8853": "Round cell liposarcoma",
+  "8854": "Pleomorphic liposarcoma",
+  "8855": "Mixed liposarcoma",
+  "8857": "Fibroblastic liposarcoma",
+  "8858": "Dedifferentiated liposarcoma",
+  "8890": "Leiomyosarcoma, NOS",
+  "8891": "Epithelioid leiomyosarcoma",
+  "8894": "Angiomyosarcoma",
+  "8895": "Myosarcoma",
+  "8896": "Myxoid leiomyosarcoma",
+  "8900": "Rhabdomyosarcoma, NOS",
+  "8901": "Pleomorphic rhabdomyosarcoma, adult type",
+  "8902": "Mixed type rhabdomyosarcoma",
+  "8910": "Embryonal rhabdomyosarcoma, NOS",
+  "8912": "Spindle cell rhabdomyosarcoma",
+  "8920": "Alveolar rhabdomyosarcoma",
+  "8921": "Rhabdomyosarcoma with ganglionic differentiation",
+  "8930": "Endometrial stromal sarcoma, NOS",
+  "8931": "Endometrial stromal sarcoma, low grade",
+  "8933": "Adenosarcoma",
+  "8934": "Carcinofibroma",
+  "8935": "Stromal sarcoma, NOS",
+  "8936": "Gastrointestinal stromal sarcoma",
+  "8940": "Mixed tumor, malignant, NOS",
+  "8941": "Carcinoma in pleomorphic adenoma",
+  "8950": "Mullerian mixed tumor",
+  "8951": "Mesodermal mixed tumor",
+  "8959": "Malignant cystic nephroma",
+  "8960": "Nephroblastoma, NOS",
+  "8963": "Malignant rhabdoid tumor",
+  "8964": "Clear cell sarcoma of kidney",
+  "8970": "Hepatoblastoma",
+  "8971": "Pancreatoblastoma",
+  "8972": "Pulmonary blastoma",
+  "8973": "Pleuropulmonary blastoma",
+  "8975": "Calcifying nested epithelialstromal tumor",
+  "8980": "Carcinosarcoma, NOS",
+  "8981": "Carcinosarcoma, embryonal",
+  "8982": "Malignant myoepithelioma",
+  "8990": "Mesenchymoma, malignant",
+  "8991": "Embryonal sarcoma",
+  "9000": "Brenner tumor, malignant",
+  "9014": "Serous adenocarcinofibroma",
+  "9015": "Mucinous adenocarcinofibroma",
+  "9020": "Phyllodes tumor, malignant",
+  "9040": "Synovial sarcoma, NOS",
+  "9041": "Synovial sarcoma, spindle cell",
+  "9042": "Synovial sarcoma, epithelioid cell",
+  "9043": "Synovial sarcoma, biphasic",
+  "9044": "Clear cell sarcoma, NOS (except of kidney)",
+  "9050": "Mesothelioma, malignant",
+  "9051": "Fibrous mesothelioma, malignant",
+  "9052": "Epithelioid mesothelioma, malignant",
+  "9053": "Mesothelioma, biphasic, malignant",
+  "9060": "Dysgerminoma",
+  "9061": "Seminoma, NOS",
+  "9062": "Seminoma, anaplastic",
+  "9063": "Spermatocytic seminoma",
+  "9064": "Germinoma",
+  "9065": "Germ cell tumor, nonseminomatous",
+  "9070": "Embryonal carcinoma, NOS",
+  "9071": "Yolk sac tumor",
+  "9072": "Polyembryoma",
+  "9080": "Teratoma, malignant, NOS",
+  "9081": "Teratocarcinoma",
+  "9082": "Malignant teratoma, undifferentiated",
+  "9083": "Malignant teratoma, intermediate",
+  "9084": "Teratoma with malignant transformation",
+  "9085": "Mixed germ cell tumor",
+  "9090": "Struma ovarii, malignant",
+  "9100": "Choriocarcinoma, NOS",
+  "9101": "Choriocarcinoma combined with other germ cell elements",
+  "9102": "Malignant teratoma, trophoblastic",
+  "9105": "Trophoblastic tumor, epithelioid",
+  "9110": "Mesonephroma, malignant",
+  "9120": "Hemangiosarcoma",
+  "9124": "Kupffer cell sarcoma",
+  "9130": "Hemangioendothelioma, malignant",
+  "9133": "Epithelioid hemangioendothelioma, malignant",
+  "9140": "Kaposi sarcoma",
+  "9150": "Hemangiopericytoma, malignant",
+  "9161": "Hemangioblastoma",
+  "9170": "Lymphangiosarcoma",
+  "9180": "Osteosarcoma, NOS",
+  "9181": "Chondroblastic osteosarcoma",
+  "9182": "Fibroblastic osteosarcoma",
+  "9183": "Telangiectatic osteosarcoma",
+  "9184": "Osteosarcoma in Paget disease of bone",
+  "9185": "Small cell osteosarcoma",
+  "9186": "Central osteosarcoma",
+  "9187": "Intraosseous well differentiated osteosarcoma",
+  "9192": "Parosteal osteosarcoma",
+  "9193": "Periosteal osteosarcoma",
+  "9194": "High grade surface osteosarcoma",
+  "9195": "Intracortical osteosarcoma",
+  "9220": "Chondrosarcoma, NOS",
+  "9221": "Juxtacortical chondrosarcoma",
+  "9230": "Chondroblastoma, malignant",
+  "9231": "Myxoid chondrosarcoma",
+  "9240": "Mesenchymal chondrosarcoma",
+  "9242": "Clear cell chondrosarcoma",
+  "9243": "Dedifferentiated chondrosarcoma",
+  "9250": "Giant cell tumor of bone, malignant",
+  "9251": "Malignant giant cell tumor of soft parts",
+  "9252": "Malignant tenosynovial giant cell tumor",
+  "9260": "Osteofibroma",
+  "9261": "Adamantinoma of long bones",
+  "9270": "Odontogenic tumor, malignant",
+  "9290": "Ameloblastic odontosarcoma",
+  "9310": "Ameloblastoma, malignant",
+  "9330": "Ameloblastic fibrosarcoma",
+  "9341": "Clear cell odontogenic carcinoma",
+  "9342": "Odontogenic carcinosarcoma",
+  "9350": "Craniopharyngioma",
+  "9351": "Craniopharyngioma, adamantinomatous",
+  "9362": "Pineoblastoma",
+  "9364": "Ewing sarcoma",
+  "9365": "Askin tumor",
+  "9370": "Chordoma, NOS",
+  "9371": "Chondroid chordoma",
+  "9372": "Dedifferentiated chordoma",
+  "9380": "Glioma, malignant",
+  "9381": "Gliomatosis cerebri",
+  "9382": "Mixed glioma",
+  "9385": "Diffuse midline glioma, H3 K27M-mutant",
+  "9390": "Choroid plexus carcinoma",
+  "9391": "Ependymoma, NOS",
+  "9392": "Ependymoma, anaplastic",
+  "9393": "Papillary ependymoma",
+  "9395": "Papillary tumor of the pineal region",
+  "9400": "Astrocytoma, NOS",
+  "9401": "Astrocytoma, anaplastic",
+  "9410": "Protoplasmic astrocytoma",
+  "9411": "Gemistocytic astrocytoma",
+  "9413": "Dysembryoplastic neuroepithelial tumor",
+  "9420": "Fibrillary astrocytoma",
+  "9421": "Pilocytic astrocytoma",
+  "9423": "Polar spongioblastoma",
+  "9424": "Pleomorphic xanthoastrocytoma",
+  "9425": "Pilomyxoid astrocytoma",
+  "9430": "Astroblastoma",
+  "9431": "Angiocentric glioma",
+  "9432": "Pituicytoma",
+  "9440": "Glioblastoma, NOS",
+  "9441": "Giant cell glioblastoma",
+  "9442": "Gliosarcoma",
+  "9445": "Glioblastoma, IDH-mutant",
+  "9450": "Oligodendroglioma, NOS",
+  "9451": "Oligodendroglioma, anaplastic",
+  "9460": "Oligodendroblastoma",
+  "9470": "Medulloblastoma, NOS",
+  "9471": "Desmoplastic nodular medulloblastoma",
+  "9472": "Medullomyoblastoma",
+  "9473": "Primitive neuroectodermal tumor, NOS",
+  "9474": "Large cell medulloblastoma",
+  "9480": "Cerebellar sarcoma, NOS",
+  "9490": "Ganglioneuroblastoma",
+  "9492": "Gangliocytoma. NOS",
+  "9500": "Neuroblastoma, NOS",
+  "9501": "Medulloepithelioma, NOS",
+  "9502": "Teratoid medulloepithelioma",
+  "9503": "Neuroepithelioma, NOS",
+  "9504": "Spongioneuroblastoma",
+  "9505": "Ganglioglioma, anaplastic",
+  "9506": "Neurocytoma, NOS",
+  "9508": "Atypical teratoid/rhabdoid tumor",
+  "9510": "Retinoblastoma, NOS",
+  "9511": "Retinoblastoma, differentiated",
+  "9512": "Retinoblastoma, undifferentiated",
+  "9513": "Retinoblastoma, diffuse",
+  "9520": "Olfactory neurogenic tumor",
+  "9521": "Olfactory neurocytoma",
+  "9522": "Olfactory neuroblastoma",
+  "9523": "Olfactory neuroepithelioma",
+  "9530": "Meningioma, malignant",
+  "9531": "Meninggothelial meningioma",
+  "9532": "Fibrous meningioma",
+  "9533": "Psammomatous meningioma",
+  "9534": "Angiomatous meningioma",
+  "9535": "Angioblastic meningioma",
+  "9537": "Transitional meningioma",
+  "9538": "Papillary meningioma",
+  "9539": "Meningeal sarcomatosis",
+  "9540": "Malignant peripheral nerve sheath tumor",
+  "9560": "Neurilemoma, malignant",
+  "9561": "Malig. peripheral nerve sheath tumor, rhabdomyoblastic different",
+  "9571": "Perineurioma, malignant",
+  "9580": "Granular cell tumor, malignant",
+  "9581": "Alveolar soft part sarcoma",
+  "9590": "Malignant lymphoma, NOS",
+  "9591": "Malignant lymphoma, non-Hodgkin, NOS",
+  "9596": "Composite Hodgkin and non-Hodgkin lymphoma",
+  "9597": "Primary cutaneous follicle centre lymphoma",
+  "9650": "Hodgkin lymphoma, NOS",
+  "9651": "Hodgkin lymphoma, lymphocyte-rich",
+  "9652": "Hodgkin lymphoma, mixed cellularity, NOS",
+  "9653": "Hodgkin lymphoma, lymphocyte depletion, NOS",
+  "9654": "Hodgkin lymphoma, lymphocyte depletion, diffuse fibrosis",
+  "9655": "Hodgkin lymphoma, lymphocyte depletion, reticular",
+  "9659": "Hodgkin lymphoma, nodular lymphocyte predominance",
+  "9661": "Hodgkin granuloma",
+  "9662": "Hodgkin sarcoma",
+  "9663": "Hodgkin lymphoma, nodular sclerosis, NOS",
+  "9664": "Hodgkin lymphoma, nodular sclerosis, cellular phase",
+  "9665": "Hodgkin lymphoma, nodular sclerosis, grade 1",
+  "9667": "Hodgkin lymphoma, nodular sclerosis, grade 2",
+  "9670": "Malignant lymphoma, small B lymphocytic, NOS",
+  "9671": "Malignant lymphoma, lymphoplasmacytic",
+  "9673": "Mantle cell lymphoma",
+  "9675": "Malignant lymphoma, mixed small and large cell, diffuse",
+  "9678": "Primary effusion lymphoma",
+  "9679": "Mediastinal large B-cell lymphoma",
+  "9680": "Malignant lymphoma, large B-cell, diffuse, NOS",
+  "9684": "Malignant lymphoma, large B-cell, diffuse, immunoblastic, NOS",
+  "9687": "Burkitt lymphoma, NOS",
+  "9688": "T-cell/histiocyte rish large B-cell lymphoma",
+  "9689": "Splenic marginal zone B-cell lymphoma",
+  "9690": "Follicular lymphoma, NOS",
+  "9691": "Follicular lymphoma, grade 2",
+  "9695": "Follicular lymphoma, grade 1",
+  "9698": "Follicular lymphoma, grade 3",
+  "9699": "Marginal zone B-cell lymphoma, NOS",
+  "9700": "Mycosis fungoides",
+  "9701": "Sezary syndrome",
+  "9702": "Mature T-cell lymphoma, NOS",
+  "9705": "Angioimmunoblastic T-cell lymphoma",
+  "9708": "Subcutaneous panniculitis-like T-cell lymphoma",
+  "9709": "Cutaneous T-cell lymphoma, NOS",
+  "9712": "Intravascular large B-cell lymphoma",
+  "9714": "Anaplastic large cell lymphoma, T cell and Null cell type",
+  "9715": "Anaplastic large cell lymphoma, ALK negative",
+  "9716": "Hepatosplenic T-cell lymphoma",
+  "9717": "Intestinal T-cell lymphoma",
+  "9718": "Primary cutaneous CD30+ T-cell lymphoproliferative disorder",
+  "9719": "NK/T-cell lymphoma, nasal and nasal-type",
+  "9724": "Systemic EBV postive T-cell lymphoproliferative disease",
+  "9725": "Hydroa vacciniforme-like lymphoma",
+  "9726": "Primary cutaneous gamma-delta T-cell lymphoma",
+  "9727": "Precursor cell lymphoblastic lymphoma, NOS",
+  "9728": "Precursor B-cell lymphoblastic lymphoma",
+  "9729": "Precursor T-cell lymphoblastic lymphoma",
+  "9731": "Plasmacytoma, NOS",
+  "9732": "Multiple myeloma",
+  "9733": "Plasma cell leukemia",
+  "9734": "Plasmacytoma, extramedullary (not occurring in bone)",
+  "9735": "Plasmablastic lymphoma",
+  "9737": "ALK positive large B-cell lymphoma",
+  "9738": "Large B-cell lymphoma arising in HHV8-associated multicentric Ca",
+  "9740": "Mast cell sarcoma",
+  "9741": "Indolent systemic mastocytosis",
+  "9742": "Mast cell leukemia",
+  "9749": "Erdheim-Chester disease",
+  "9750": "Malignant histiocytosis",
+  "9751": "Langerhans cell histiocytosis, NOS",
+  "9752": "Langerhans cell histiocytosis,unifocal",
+  "9753": "Langerhans cell histiocytosis,multifocal",
+  "9754": "Langerhans cell histiocytosis, disseminated",
+  "9755": "Histiocytic sarcoma",
+  "9756": "Langerhans cell sarcoma",
+  "9757": "Indeterminate dendritic cell sarcoma",
+  "9758": "Follicular dendritic cell sarcoma",
+  "9759": "Fibroblastic reticular cell tumor",
+  "9760": "Immunoproliferative disease, NOS",
+  "9761": "Waldenstrom macroglobulinemia",
+  "9762": "Heavy chain disease, NOS",
+  "9764": "Immunoproliferative small intestinal disease",
+  "9800": "Leukemia, NOS",
+  "9801": "Acute leukemia, NOS",
+  "9805": "Acute biphenotypic leukemia",
+  "9806": "Mixed phenotype acute leukemia with t(9;22)(q34;q11.2);BCR-ABL1",
+  "9807": "Mixed phenotype acute leukemia with t(v;11q23); MLL rearranged",
+  "9808": "Mixed phenotype acute leukemia, B/myeloid, NOS",
+  "9809": "Mixed phenotype acute leukemia, T/myeloid, NOS",
+  "9811": "B lymphoblastic leukemia/lymphoma, NOS",
+  "9812": "B lymphoblastic leukemia/lymphoma with t(9;22)9q34;q11.2); BCR-A",
+  "9813": "B lymphoblastic leukemia/lymphoma with t(v;11q23); MLL rearrange",
+  "9814": "B lymphoblastic leukemia/lymphoma with t(12;21)(p13;q22); TEL-AM",
+  "9815": "B lymphoblastic leukemia/lymphoma with hyperdiplody",
+  "9816": "B lymphoblastic leukemia/lymphoma with hypodiploidy(Hypodiploid",
+  "9817": "B lymphoblastic leukemia/lymphoma with t(5;14)(q31;q32); IL3-IGH",
+  "9818": "B lymphoblastic leukemia/lymphoma with t(1;19)(q23;p13.3);E2A-PB",
+  "9820": "Lymphoid leukemia, NOS",
+  "9823": "B-cell chronic lymphocytic leukemia/small lymphocytic lymphoma",
+  "9826": "Burkitt cell leukemia",
+  "9827": "Adult T-cell leukemia/lymphoma (HTLV-1 positive)",
+  "9831": "T-cell large granular lymphocytic leukemia",
+  "9832": "Prolymphocytic leukemia, NOS",
+  "9833": "Prolymphocytic leukemia, B-cell type",
+  "9834": "Prolymphocytic leukemia, T-cell type",
+  "9835": "Precursor cell lymphoblastic leukemia, NOS",
+  "9836": "Precursor B-cell lymphoblastic leukemia",
+  "9837": "Precursor T-cell lymphoblastic leukemia",
+  "9840": "Acute myeloid leukemia, M6 type",
+  "9860": "Myeloid leukemia, NOS",
+  "9861": "Acute myeloid leukemia, NOS",
+  "9863": "Chronic myeloid leukemia, NOS",
+  "9865": "Acute myeloid leukemia with t(6;9)(p23;q34); DEK-NUP214",
+  "9866": "Acute promyelocytic leukemia, t(15;17)(q22;q11-12)",
+  "9867": "Acute myelomonocytic leukemia",
+  "9869": "Acute myeloid leukemia with inv(3)9q21q26.2)ort(3;3)(q21;q26.2);",
+  "9870": "Acute basophilic leukemia",
+  "9871": "Acute myeloid leukemia with abnormal marrow eosinophils",
+  "9872": "Acute myeloid leukemia, minimal differentiation",
+  "9873": "Acute myeloid leukemia without maturation",
+  "9874": "Acute myeloid leukemia with maturation",
+  "9875": "Chronic myelogenous leukemia, BCR/ABL positive",
+  "9876": "Atypical chronic myeloid leukemia, BCR/ABL negative",
+  "9891": "Acute monoblastic and monocytic leukemia",
+  "9895": "Acute myeloid leukemia with myelodysplasia-related changes",
+  "9896": "Acute myeloid leukemia, t(8;21)(q22;q22)",
+  "9897": "Acute myeloid leukemia, 11q23 abnormalities",
+  "9898": "Myeloid leukemia assosiated with Down Syndrome",
+  "9910": "Acute megakaryoblastic leukemia",
+  "9911": "Acute myeloid leukemia(megaloblastic) with t(1;22)(p13:q13); RBM",
+  "9920": "Therapy-related acute myeloid neoplasm, NOS",
+  "9930": "Myeloid sarcoma",
+  "9931": "Acute panmyelosis with myelofibrosis",
+  "9940": "Hairy cell leukemia",
+  "9945": "Chronic myelomonocytic leukemia, NOS",
+  "9946": "Juvenile myelomonocytic leukemia",
+  "9948": "Aggressive NK-cell leukemia",
+  "9950": "Polycythemia vera",
+  "9960": "Myeloproliferative neoplasm, NOS",
+  "9961": "Primary myelofibrosis",
+  "9962": "Essential thrombocythemia",
+  "9963": "Chronic neutrophilic leukemia",
+  "9964": "Chronic eosinophilic leukemia",
+  "9965": "Myeloid and lymphoid neoplasms with PDGFRA rearrangement",
+  "9966": "Myeloid neoplasms with PDGFRA rearrangement",
+  "9967": "Myeloid and lymphoid neoplasms with FGFR1 abnormalities",
+  "9971": "Polymorphic post transplant lymphoperiferative disorder",
+  "9975": "Myloproliferative neoplasm, unclassifiable",
+  "9980": "Refractory anemia",
+  "9982": "Refractory anemia with sideroblasts",
+  "9983": "Refractory anemia with excess blasts",
+  "9984": "Refractory anemia with excess blasts in transformation",
+  "9985": "Refractory cytopenia with multilineage dysplasia",
+  "9986": "Myelodysplastic syndrome with 5q-syndrome",
+  "9987": "Therapy-related myelodysplastic syndrome, NOS",
+  "9989": "Myelodysplastic syndrome, NOS",
+  "9990": "No microscopic confirmation",
+  "9991": "Refractory neutropenia",
+  "9992": "refractory thrombocytopenia"
+};
+
+const selectedMorphDiseaseFilters = {
+    icd10: new Set(),
+    site: new Set(),
+    group: new Set()
+};
+
+let menu7MorphRows = [];
+let menu7TotalCases = 0;
+
+function initMorphDiseaseFilterOptions() {
+    const icdSet = new Set();
+    cancerRecords.forEach(r => { if (r.i10) icdSet.add(r.i10); });
+    const sortedIcd = Array.from(icdSet).sort();
+    const listIcdEl = document.getElementById('listMorphIcd10');
+    if (!listIcdEl) return;
+
+    if (sortedIcd.length === 0) {
+        listIcdEl.innerHTML = '<div style="font-size: 0.74rem; color: #64748b; padding: 6px;">ยังไม่มีข้อมูลรหัส I10 (กรุณาอัปโหลดไฟล์ทะเบียนมะเร็ง)</div>';
+    } else {
+        listIcdEl.innerHTML = sortedIcd.map(code => {
+            const checked = selectedMorphDiseaseFilters.icd10.has(code) ? 'checked' : '';
+            const safeAttr = code.replace(/"/g, '&quot;');
+            return `<label class="multi-item" data-search="${safeAttr.toLowerCase()}">
+                <input type="checkbox" value="${safeAttr}" ${checked} onchange="onMorphDiseaseCheckboxChange('icd10', this)">
+                <span>${code}</span>
+            </label>`;
+        }).join('');
+    }
+
+    const siteOptions = [
+        { key: 'ALL', label: 'All sites (ALL)' },
+        { key: 'ALLbC44', label: 'All sites but C44 (ALLbC44)' },
+        ...CANCER_SITES.map((s, idx) => ({ key: `IDX_${idx}`, label: `${s.site} (${s.icd})` }))
+    ];
+    document.getElementById('listMorphSite').innerHTML = siteOptions.map(opt => {
+        const checked = selectedMorphDiseaseFilters.site.has(opt.key) ? 'checked' : '';
+        return `<label class="multi-item" data-search="${opt.label.toLowerCase()}">
+            <input type="checkbox" value="${opt.key}" ${checked} onchange="onMorphDiseaseCheckboxChange('site', this)">
+            <span>${opt.label}</span>
+        </label>`;
+    }).join('');
+
+    document.getElementById('listMorphGroup').innerHTML = QC_GROUPS.map(g => {
+        const displayLabel = `${g.label} - ${g.group}`;
+        const checked = selectedMorphDiseaseFilters.group.has(g.group) ? 'checked' : '';
+        const safeGroup = g.group.replace(/"/g, '&quot;');
+        return `<label class="multi-item" data-search="${displayLabel.toLowerCase()}">
+            <input type="checkbox" value="${safeGroup}" ${checked} onchange="onMorphDiseaseCheckboxChange('group', this)">
+            <span>${displayLabel}</span>
+        </label>`;
+    }).join('');
+
+    filterMorphCheckboxList('icd10');
+    filterMorphCheckboxList('site');
+    filterMorphCheckboxList('group');
+    updateMorphDiseaseFilterSummaries();
+}
+
+function onMorphDiseaseCheckboxChange(category, cb) {
+    if (cb.checked) selectedMorphDiseaseFilters[category].add(cb.value);
+    else selectedMorphDiseaseFilters[category].delete(cb.value);
+    updateMorphDiseaseFilterSummaries();
+    renderMenu7Morphology();
+}
+
+function selectAllMorphInBox(category, isSelectAll) {
+    const listId = category === 'icd10' ? 'listMorphIcd10' : (category === 'site' ? 'listMorphSite' : 'listMorphGroup');
+    const items = document.querySelectorAll(`#${listId} .multi-item`);
+    selectedMorphDiseaseFilters[category].clear();
+    items.forEach(item => {
+        if (item.style.display === 'none' && isSelectAll) return;
+        const cb = item.querySelector('input[type="checkbox"]');
+        if (!cb) return;
+        cb.checked = isSelectAll;
+        if (isSelectAll) selectedMorphDiseaseFilters[category].add(cb.value);
+    });
+    updateMorphDiseaseFilterSummaries();
+    renderMenu7Morphology();
+}
+
+function filterMorphCheckboxList(category) {
+    const inputId = category === 'icd10' ? 'searchMorphIcd10' : (category === 'site' ? 'searchMorphSite' : 'searchMorphGroup');
+    const listId = category === 'icd10' ? 'listMorphIcd10' : (category === 'site' ? 'listMorphSite' : 'listMorphGroup');
+    const inputEl = document.getElementById(inputId);
+    const query = (inputEl ? inputEl.value : '').trim().toLowerCase();
+    document.querySelectorAll(`#${listId} .multi-item`).forEach(item => {
+        const text = item.getAttribute('data-search') || '';
+        item.style.display = (!query || text.includes(query)) ? 'flex' : 'none';
+    });
+}
+
+function clearMorphDiseaseFilters() {
+    selectedMorphDiseaseFilters.icd10.clear();
+    selectedMorphDiseaseFilters.site.clear();
+    selectedMorphDiseaseFilters.group.clear();
+    const s1 = document.getElementById('searchMorphIcd10');
+    const s2 = document.getElementById('searchMorphSite');
+    const s3 = document.getElementById('searchMorphGroup');
+    if (s1) s1.value = '';
+    if (s2) s2.value = '';
+    if (s3) s3.value = '';
+    initMorphDiseaseFilterOptions();
+    renderMenu7Morphology();
+}
+
+function updateMorphDiseaseFilterSummaries() {
+    const icdArr = Array.from(selectedMorphDiseaseFilters.icd10);
+    const siteArr = Array.from(selectedMorphDiseaseFilters.site);
+    const groupArr = Array.from(selectedMorphDiseaseFilters.group);
+
+    const sumIcd = document.getElementById('summaryMorphIcd10');
+    const sumSite = document.getElementById('summaryMorphSite');
+    const sumGroup = document.getElementById('summaryMorphGroup');
+    if (!sumIcd || !sumSite || !sumGroup) return;
+
+    sumIcd.textContent = icdArr.length
+        ? `เลือกแล้ว (${icdArr.length}): ${icdArr.slice(0, 6).join(', ')}${icdArr.length > 6 ? '...' : ''}`
+        : 'เลือกแล้ว: ทั้งหมด (ไม่ได้จำกัดรหัส)';
+
+    const siteLabels = siteArr.map(k => {
+        if (k === 'ALL') return 'All sites';
+        if (k === 'ALLbC44') return 'All sites but C44';
+        const idx = parseInt(k.replace('IDX_', ''), 10);
+        return CANCER_SITES[idx] ? CANCER_SITES[idx].site : k;
+    });
+    sumSite.textContent = siteLabels.length
+        ? `เลือกแล้ว (${siteLabels.length}): ${siteLabels.slice(0, 4).join(', ')}${siteLabels.length > 4 ? '...' : ''}`
+        : 'เลือกแล้ว: ทั้งหมด (ไม่ได้จำกัด Site)';
+
+    const groupLabels = groupArr.map(gKey => {
+        const found = QC_GROUPS.find(g => g.group === gKey);
+        return found ? `${found.label} (${found.group})` : gKey;
+    });
+    sumGroup.textContent = groupLabels.length
+        ? `เลือกแล้ว (${groupLabels.length}): ${groupLabels.slice(0, 3).join(', ')}${groupLabels.length > 3 ? '...' : ''}`
+        : 'เลือกแล้ว: ทั้งหมด (ไม่ได้จำกัดกลุ่มโรค)';
+}
+
+function matchesMorphDiseaseFilters(rec) {
+    if (selectedMorphDiseaseFilters.icd10.size > 0 && !selectedMorphDiseaseFilters.icd10.has(rec.i10)) return false;
+    if (selectedMorphDiseaseFilters.site.size > 0) {
+        const siteIdx = mapSiteIndex(rec, rec.sex);
+        if (siteIdx === -1) return false;
+        const siteObj = CANCER_SITES[siteIdx];
+        let matched = false;
+        if (selectedMorphDiseaseFilters.site.has('ALL')) matched = true;
+        if (selectedMorphDiseaseFilters.site.has('ALLbC44') && siteObj && siteObj.icd !== 'C44') matched = true;
+        if (selectedMorphDiseaseFilters.site.has(`IDX_${siteIdx}`)) matched = true;
+        if (!matched) return false;
+    }
+    if (selectedMorphDiseaseFilters.group.size > 0) {
+        const recGroups = getQcGroupKeysForRecord(rec);
+        if (!recGroups.some(gk => selectedMorphDiseaseFilters.group.has(gk))) return false;
+    }
+    return true;
+}
+
+function renderMenu7Morphology() {
+    updateMorphDiseaseFilterSummaries();
+
+    const startYear = parseInt(document.getElementById('startYear').value, 10);
+    const endYear = parseInt(document.getElementById('endYear').value, 10);
+    const sexVal = document.getElementById('dashSexFilter').value;
+
+    const filtered = cancerRecords.filter(r => {
+        if (!r.year || r.year < startYear || r.year > endYear) return false;
+        if (sexVal !== 'all' && String(r.sex) !== sexVal) return false;
+        return matchesMorphDiseaseFilters(r);
+    });
+
+    const totalCases = filtered.length;
+    const countMap = new Map();
+    let matchedCases = 0;
+    let unmatchedCases = 0;
+
+    filtered.forEach(r => {
+        const key = (r.mor !== null && !isNaN(r.mor)) ? String(r.mor) : 'UNSPECIFIED';
+        const morphName = (r.mor !== null && Object.prototype.hasOwnProperty.call(MORPHOLOGY_LOOKUP, r.mor))
+            ? MORPHOLOGY_LOOKUP[r.mor]
+            : 'Not found in Morphology table';
+
+        if (r.mor !== null && Object.prototype.hasOwnProperty.call(MORPHOLOGY_LOOKUP, r.mor)) {
+            matchedCases++;
+        } else {
+            unmatchedCases++;
+        }
+
+        if (!countMap.has(key)) {
+            countMap.set(key, { mor: key, morphology: morphName, number: 0 });
+        }
+        countMap.get(key).number++;
+    });
+
+    menu7MorphRows = Array.from(countMap.values())
+        .map(item => ({
+            mor: item.mor,
+            morphology: item.morphology,
+            number: item.number,
+            pct: totalCases > 0 ? Number(((item.number / totalCases) * 100).toFixed(2)) : 0
+        }))
+        .sort((a, b) => b.number - a.number || String(a.mor).localeCompare(String(b.mor)));
+
+    menu7TotalCases = totalCases;
+
+    const sexText = sexVal === '1' ? 'เพศชาย' : (sexVal === '2' ? 'เพศหญิง' : 'ทั้งหมด');
+    document.getElementById('morphActiveFilterBar').innerHTML = `
+        <span>ช่วงปี: <strong>${startYear} - ${endYear}</strong></span>
+        <span>เพศ: <strong>${sexText}</strong></span>
+        <span>ICD10 ที่เลือก: <strong>${selectedMorphDiseaseFilters.icd10.size ? Array.from(selectedMorphDiseaseFilters.icd10).join(', ') : 'ทั้งหมด'}</strong></span>
+        <span>Site ที่เลือก: <strong>${selectedMorphDiseaseFilters.site.size ? `${selectedMorphDiseaseFilters.site.size} รายการ` : 'ทั้งหมด'}</strong></span>
+        <span>กลุ่มโรคที่เลือก: <strong>${selectedMorphDiseaseFilters.group.size ? Array.from(selectedMorphDiseaseFilters.group).join(', ') : 'ทั้งหมด'}</strong></span>
+    `;
+
+    document.getElementById('morphKpiTotal').textContent = totalCases.toLocaleString();
+    document.getElementById('morphKpiSub').textContent = `ช่วงปี: ${startYear} - ${endYear} (${sexText})`;
+    document.getElementById('morphKpiMorCount').textContent = menu7MorphRows.length.toLocaleString();
+    document.getElementById('morphKpiMatchedSub').textContent = `ตรงกับตาราง Morphology: ${matchedCases.toLocaleString()} ราย`;
+
+    if (menu7MorphRows.length > 0 && totalCases > 0) {
+        const top1 = menu7MorphRows[0];
+        document.getElementById('morphKpiTop1').textContent = `${top1.mor} - ${top1.morphology}`;
+        document.getElementById('morphKpiTop1Sub').textContent = `${top1.number.toLocaleString()} ราย (${top1.pct.toFixed(2)}%)`;
+    } else {
+        document.getElementById('morphKpiTop1').textContent = '-';
+        document.getElementById('morphKpiTop1Sub').textContent = '0 ราย (0.00%)';
+    }
+
+    const unmPct = totalCases > 0 ? ((unmatchedCases / totalCases) * 100).toFixed(2) : '0.00';
+    document.getElementById('morphKpiUnmatched').textContent = unmatchedCases.toLocaleString();
+    document.getElementById('morphKpiUnmatchedSub').textContent = `${unmPct}%`;
+
+    const limitVal = document.getElementById('menu7ChartLimit').value;
+    const chartRows = (limitVal === 'all') ? menu7MorphRows : menu7MorphRows.slice(0, parseInt(limitVal, 10));
+    const chartBox = document.getElementById('menu7MorphChartBox');
+    chartBox.style.height = `${Math.max(360, chartRows.length * 28 + 60)}px`;
+
+    setChart('menu7MorphPctChart', {
+        type: 'bar',
+        data: {
+            labels: chartRows.map(r => `${r.mor} : ${r.morphology}`),
+            datasets: [{
+                label: 'ร้อยละ (%)',
+                data: chartRows.map(r => r.pct),
+                backgroundColor: '#2563eb',
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            indexAxis: 'y',
+            layout: { padding: { right: 54 } },
+            scales: {
+                x: { beginAtZero: true, ticks: { callback: v => v + '%' } }
+            },
+            plugins: {
+                legend: { display: false },
+                barValueLabels: { enabled: true, suffix: '%', decimals: 2 },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => {
+                            const row = chartRows[ctx.dataIndex];
+                            return `ร้อยละ: ${row.pct.toFixed(2)}% (${row.number.toLocaleString()} ราย)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    renderMenu7MorphTableOnly();
+    generatedCSVFilename = `Morphology_${startYear}t${endYear}.csv`;
+    document.getElementById('exportBtn').disabled = (menu7MorphRows.length === 0);
+}
+
+function renderMenu7MorphTableOnly() {
+    const query = (document.getElementById('menu7TableSearch').value || '').trim().toLowerCase();
+    const visibleRows = !query
+        ? menu7MorphRows
+        : menu7MorphRows.filter(r =>
+            String(r.mor).toLowerCase().includes(query) ||
+            String(r.morphology).toLowerCase().includes(query)
+        );
+
+    const tbody = document.getElementById('menu7MorphTableBody');
+    tbody.innerHTML = '';
+    generatedCSVRows = [['Mor', 'Morphology', 'Number', '%']];
+
+    if (visibleRows.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#64748b; padding:14px;">ไม่มีข้อมูลตามเงื่อนไขที่เลือก</td></tr>';
+        return;
+    }
+
+    let sumNum = 0;
+    let sumPct = 0;
+
+    visibleRows.forEach(r => {
+        sumNum += r.number;
+        sumPct += r.pct;
+        const pctStr = r.pct.toFixed(2);
+        generatedCSVRows.push([r.mor, r.morphology, r.number, pctStr]);
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td style="position: static; font-family: monospace; font-weight: 700; text-align: left;">${r.mor}</td>
+            <td style="position: static; text-align: left; max-width: none;">${r.morphology}</td>
+            <td style="position: static; text-align: right;">${r.number.toLocaleString()}</td>
+            <td style="position: static; text-align: right;">${pctStr}%</td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    const totalPctDisplay = (!query && menu7TotalCases > 0) ? '100.00' : sumPct.toFixed(2);
+    const trTotal = document.createElement('tr');
+    trTotal.className = 'total-row';
+    trTotal.innerHTML = `
+        <td style="position: static; font-family: monospace; text-align: left;">Total</td>
+        <td style="position: static; text-align: left; max-width: none;">รวมทั้งหมด (${visibleRows.length.toLocaleString()} รหัส MOR)</td>
+        <td style="position: static; text-align: right;">${sumNum.toLocaleString()}</td>
+        <td style="position: static; text-align: right;">${totalPctDisplay}%</td>
+    `;
+    tbody.appendChild(trTotal);
+    generatedCSVRows.push(['Total', 'Total', sumNum, totalPctDisplay]);
+}
+
 // เตรียมตัวเลือกเริ่มต้นและวาดกราฟหน้าหลัก
 initDiseaseFilterOptions();
+initPathoDiseaseFilterOptions();
 renderDashboard();
+initMorphDiseaseFilterOptions();
 </script>
 </body>
 </html>
