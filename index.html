@@ -277,7 +277,7 @@
 <!-- เมนูด้านซ้าย -->
 <aside class="sidebar">
     <div class="sidebar-brand">
-        Cancer Registry System
+        Population-Based Cancer Registry System
         <small>Dashboard, Incidence, Cases & QC</small>
     </div>
     <button id="navDashboard" class="nav-btn active" onclick="switchView('dashboard')">
@@ -341,6 +341,13 @@
             <div class="form-group">
                 <label>ปีที่สิ้นสุด (End Year)</label>
                 <select id="endYear" onchange="onFilterChange()"></select>
+            </div>
+            <div class="form-group">
+                <label>ประชากรมาตรฐานโลก (World Standard)</label>
+                <select id="stdPopFilter" onchange="onStdPopChange()">
+                    <option value="segi" selected>Segi's World Standard</option>
+                    <option value="who">WHO World Standard (2000-2025)</option>
+                </select>
             </div>
             <div class="form-group" id="dashSexGroup">
                 <label id="dashSexLabel">เพศ (หน้าหลัก)</label>
@@ -511,8 +518,8 @@
     <!-- มุมมองที่ 2: ตาราง Incidence -->
     <div id="incidenceView" style="display: none;">
         <div class="table-header-banner">
-            <h2>ตาราง Cancer Incidence &amp; ASR (Segi’s World Standard)</h2>
-            <p>คำนวณอัตราอุบัติการณ์โรคมะเร็งจำแนกตามกลุ่มอายุ (Age-Specific Incidence Rate), Crude Rate, Cumulative Risk (0-64, 0-74) และ ASR โดยใช้ประชากรมาตรฐานโลก Segi’s World Standard Population</p>
+            <h2 id="incBannerTitle">ตาราง Cancer Incidence &amp; ASR (Segi’s World Standard)</h2>
+            <p id="incBannerDesc">คำนวณอัตราอุบัติการณ์โรคมะเร็งจำแนกตามกลุ่มอายุ (Age-Specific Incidence Rate), Crude Rate, Cumulative Risk (0-64, 0-74) และ ASR โดยใช้ประชากรมาตรฐานโลก Segi’s World Standard Population</p>
         </div>
 
         <div id="incResultPanel" class="panel" style="display: none;">
@@ -861,7 +868,7 @@
         </div>
 
         <div class="chart-card" style="margin-bottom: 14px;">
-            <h4>ร้อยละของกลุ่มพยาธิวิทยา (Pathological Group %)</h4>
+            <h4>ร้อยละของกลุ่มพยาธิวิทยา (Morphological Group %)</h4>
             <div style="position: relative; height: 530px; width: 100%;"><canvas id="mainPathoPctBarChart"></canvas></div>
         </div>
 
@@ -877,7 +884,7 @@
         </div>
 
         <div class="panel">
-            <h4 style="margin: 0 0 10px 0; font-size: 0.9rem; color: #0f172a;">ตารางสรุปจำนวนและร้อยละจำแนกตามกลุ่มพยาธิวิทยา (ICD-O-3 Morphology)</h4>
+            <h4 style="margin: 0 0 10px 0; font-size: 0.9rem; color: #0f172a;">ตารางสรุปจำนวนและร้อยละจำแนกตามกลุ่มพยาธิวิทยา (Morphological Group)</h4>
             <div class="table-wrapper">
                 <table style="font-size: 0.74rem;">
                     <thead>
@@ -980,7 +987,7 @@
 
         <div class="panel">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 10px;">
-                <h4 style="margin: 0; font-size: 0.92rem; color: #0f172a;">กราฟพยาธิวิทยาจำแนกตาม Morphology (กราฟวงกลม % และกราฟแท่งแนวนอนจำนวนราย)</h4>
+                <h4 style="margin: 0; font-size: 0.92rem; color: #0f172a;">กราฟพยาธิวิทยาจำแนกตาม Morphology</h4>
                 <div style="display: flex; align-items: center; gap: 6px;">
                     <label for="menu7ChartLimit" style="font-size: 0.78rem; font-weight: 600;">แสดงบนกราฟ:</label>
                     <select id="menu7ChartLimit" onchange="renderMenu7Morphology()" style="padding: 4px 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.78rem;">
@@ -993,13 +1000,13 @@
             </div>
             <div class="grid-2" style="align-items: start;">
                 <div class="chart-card" style="box-shadow: none; background: #f8fafc;">
-                    <h4>ร้อยละของพยาธิวิทยาจำแนกตาม Morphology (%) — กราฟวงกลม</h4>
+                    <h4>ร้อยละของพยาธิวิทยาจำแนกตาม Morphology (%)</h4>
                     <div id="menu7MorphPieBox" style="position: relative; height: 440px; width: 100%;">
                         <canvas id="menu7MorphPctChart"></canvas>
                     </div>
                 </div>
                 <div class="chart-card" style="box-shadow: none; background: #f8fafc;">
-                    <h4>จำนวนของพยาธิวิทยาจำแนกตาม Morphology (ราย) — กราฟแท่งแนวนอน</h4>
+                    <h4>จำนวนของพยาธิวิทยาจำแนกตาม Morphology (ราย)</h4>
                     <div id="menu7MorphBarBox" style="position: relative; height: 440px; width: 100%;">
                         <canvas id="menu7MorphCountBarChart"></canvas>
                     </div>
@@ -1009,7 +1016,7 @@
 
         <div class="panel">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 8px;">
-                <h4 style="margin: 0; font-size: 0.92rem; color: #0f172a;">ตารางสรุปพยาธิวิทยา (Mor, Morphology, Number, %)</h4>
+                <h4 style="margin: 0; font-size: 0.92rem; color: #0f172a;">ตารางสรุปพยาธิวิทยา</h4>
                 <input type="text" id="menu7TableSearch" placeholder="ค้นหารหัส Mor หรือ Morphology ในตาราง..." oninput="renderMenu7MorphTableOnly()" style="padding: 5px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.78rem; min-width: 240px;">
             </div>
             <div class="table-wrapper">
@@ -1037,7 +1044,7 @@
 
         <div class="grid-2" style="margin-bottom: 14px;">
             <div class="chart-card">
-                <h4>1. กราฟเส้นแนวโน้มของมะเร็งแต่ละชนิด (Site ตามตาราง Incidence) เพศชาย (ASR รายปีเพศชาย ต่อ 100,000 ประชากร)</h4>
+                <h4>1. กราฟเส้นแนวโน้มของมะเร็งแต่ละชนิด (Site) เพศชาย (ASR รายปีเพศชาย ต่อ 100,000 ประชากร)</h4>
                 <div class="top-score-bar">
                     <label for="topSiteMaleRange">แสดง Top Cancer (1–20):</label>
                     <input type="range" id="topSiteMaleRange" min="1" max="20" value="5" oninput="onTrendSliderChange('siteMale', this.value)">
@@ -1047,7 +1054,7 @@
             </div>
 
             <div class="chart-card">
-                <h4>2. กราฟเส้นแนวโน้มของมะเร็งแต่ละชนิด (Site ตามตาราง Incidence) เพศหญิง (ASR รายปีเพศหญิง ต่อ 100,000 ประชากร)</h4>
+                <h4>2. กราฟเส้นแนวโน้มของมะเร็งแต่ละชนิด (Site) เพศหญิง (ASR รายปีเพศหญิง ต่อ 100,000 ประชากร)</h4>
                 <div class="top-score-bar">
                     <label for="topSiteFemaleRange">แสดง Top Cancer (1–20):</label>
                     <input type="range" id="topSiteFemaleRange" min="1" max="20" value="5" oninput="onTrendSliderChange('siteFemale', this.value)">
@@ -1059,7 +1066,7 @@
 
         <div class="grid-2" style="margin-bottom: 14px;">
             <div class="chart-card">
-                <h4>3. กราฟเส้นแนวโน้มของมะเร็งแต่ละชนิด (กลุ่มโรค ICD10GROUPLABEL - ICD10GROUP) เพศชาย (ASR รายปีเพศชาย ต่อ 100,000 ประชากร)</h4>
+                <h4>3. กราฟเส้นแนวโน้มของมะเร็งแต่ละชนิด (กลุ่มโรค ICD10GROUP) เพศชาย (ASR รายปีเพศชาย ต่อ 100,000 ประชากร)</h4>
                 <div class="top-score-bar">
                     <label for="topGroupMaleRange">แสดง Top Cancer (1–20):</label>
                     <input type="range" id="topGroupMaleRange" min="1" max="20" value="5" oninput="onTrendSliderChange('groupMale', this.value)">
@@ -1069,7 +1076,7 @@
             </div>
 
             <div class="chart-card">
-                <h4>4. กราฟเส้นแนวโน้มของมะเร็งแต่ละชนิด (กลุ่มโรค ICD10GROUPLABEL - ICD10GROUP) เพศหญิง (ASR รายปีเพศหญิง ต่อ 100,000 ประชากร)</h4>
+                <h4>4. กราฟเส้นแนวโน้มของมะเร็งแต่ละชนิด (กลุ่มโรค ICD10GROUP) เพศหญิง (ASR รายปีเพศหญิง ต่อ 100,000 ประชากร)</h4>
                 <div class="top-score-bar">
                     <label for="topGroupFemaleRange">แสดง Top Cancer (1–20):</label>
                     <input type="range" id="topGroupFemaleRange" min="1" max="20" value="5" oninput="onTrendSliderChange('groupFemale', this.value)">
@@ -1100,11 +1107,49 @@
 </main>
 
 <script>
-const SEGI_WEIGHTS = [
-    12000, 10000, 9000, 9000, 8000, 8000,
-    6000, 6000, 6000, 6000, 5000, 4000,
-    4000, 3000, 2000, 1000, 500, 500
-];
+const STD_POP_DATA = {
+    segi: {
+        name: "Segi’s World Standard",
+        shortName: "Segi",
+        weights: [
+            12000, 10000, 9000, 9000, 8000, 8000,
+            6000, 6000, 6000, 6000, 5000, 4000,
+            4000, 3000, 2000, 1000, 500, 500
+        ]
+    },
+    who: {
+        name: "WHO World Standard (2000–2025)",
+        shortName: "WHO",
+        weights: [
+            8860, 8690, 8600, 8470, 8220, 7930,
+            7610, 7150, 6590, 6040, 5370, 4550,
+            3720, 2960, 2210, 1520, 910, 635
+        ]
+    }
+};
+
+function getCurrentStdPop() {
+    const sel = document.getElementById('stdPopFilter');
+    const key = sel ? sel.value : 'segi';
+    return STD_POP_DATA[key] || STD_POP_DATA.segi;
+}
+
+function getCurrentWeights() {
+    return getCurrentStdPop().weights;
+}
+
+function getCurrentTotalStdWeight() {
+    return getCurrentWeights().reduce((a, b) => a + b, 0);
+}
+
+function onStdPopChange() {
+    const std = getCurrentStdPop();
+    const titleEl = document.getElementById('incBannerTitle');
+    const descEl = document.getElementById('incBannerDesc');
+    if (titleEl) titleEl.textContent = `ตาราง Cancer Incidence & ASR (${std.name})`;
+    if (descEl) descEl.textContent = `คำนวณอัตราอุบัติการณ์โรคมะเร็งจำแนกตามกลุ่มอายุ (Age-Specific Incidence Rate), Crude Rate, Cumulative Risk (0-64, 0-74) และ ASR โดยใช้ประชากรมาตรฐานโลก ${std.name} Population`;
+    onFilterChange();
+}
 
 const AGE_GROUPS_LABELS = [
     '0-4', '5-9', '10-14', '15-19', '20-24', '25-29',
@@ -2014,10 +2059,12 @@ function computeAsrFromRecords(recordsList, popByAge) {
         else ageCounts[idx]++;
     });
 
+    const weights = getCurrentWeights();
+    const totalWeight = getCurrentTotalStdWeight();
     let asrRaw = 0;
     for (let i = 0; i < 18; i++) {
         const rate = popByAge[i] > 0 ? (ageCounts[i] / popByAge[i]) * 100000 : 0;
-        asrRaw += (rate * SEGI_WEIGHTS[i]) / 100000;
+        asrRaw += (rate * weights[i]) / totalWeight;
     }
 
     const known = recordsList.length - ageUnk;
@@ -2051,11 +2098,13 @@ function computeSexSiteMetrics(recordsForSex, popByAge) {
         else stats[siteIdx].ageCounts[ageIdx]++;
     });
 
+    const weights = getCurrentWeights();
+    const totalWeight = getCurrentTotalStdWeight();
     return stats.map(st => {
         let asrRaw = 0;
         for (let i = 0; i < 18; i++) {
             const rate = popByAge[i] > 0 ? (st.ageCounts[i] / popByAge[i]) * 100000 : 0;
-            asrRaw += (rate * SEGI_WEIGHTS[i]) / 100000;
+            asrRaw += (rate * weights[i]) / totalWeight;
         }
         const known = st.count - st.ageUnk;
         const asr = (known > 0 && st.ageUnk > 0) ? asrRaw * (st.count / known) : asrRaw;
@@ -3461,6 +3510,9 @@ function calculateIncidence() {
     const { siteStats, allSitesRow, allButC44Row } = buildSiteCountsAndTotals(sex, startYear, endYear);
     const totalCasesNoSkin = allButC44Row.allAges || 1;
 
+    const weights = getCurrentWeights();
+    const totalWeight = getCurrentTotalStdWeight();
+
     function computeMetrics(rowObj) {
         const rates = new Array(18).fill(0);
         let asrRaw = 0;
@@ -3470,7 +3522,7 @@ function calculateIncidence() {
         for (let i = 0; i < 18; i++) {
             const rate = popByAge[i] > 0 ? (rowObj.ageCounts[i] / popByAge[i]) * 100000 : 0;
             rates[i] = rate;
-            asrRaw += (rate * SEGI_WEIGHTS[i]) / 100000;
+            asrRaw += (rate * weights[i]) / totalWeight;
             if (i <= 12) cum0_64 += (rate * 5) / 100000 * 100;
             if (i <= 14) cum0_74 += (rate * 5) / 100000 * 100;
         }
@@ -3545,11 +3597,13 @@ function renderIncidenceTable(rows, sex, startYear, endYear, totalPop, totalCase
     });
 
     const sexLabel = sex === 1 ? 'Male' : 'Female';
-    generatedCSVFilename = `Inc_CMR${startYear}t${endYear}${sexLabel}.csv`;
+    const stdPop = getCurrentStdPop();
+    generatedCSVFilename = `Inc_CMR${startYear}t${endYear}${sexLabel}_${stdPop.shortName}.csv`;
 
     document.getElementById('incSummaryBar').innerHTML = `
         <span>เพศที่เลือก: <strong>${sex === 1 ? 'ชาย (Male)' : 'หญิง (Female)'}</strong></span>
         <span>ช่วงปีที่วินิจฉัย: <strong>${startYear} - ${endYear}</strong></span>
+        <span>ประชากรมาตรฐานโลก: <strong>${stdPop.name}</strong></span>
         <span>จำนวนผู้ป่วยทั้งหมด (All sites): <strong>${totalCases.toLocaleString()} ราย</strong></span>
         <span>ประชากรรวมช่วงปีที่เลือก (Person-years): <strong>${Math.round(totalPop).toLocaleString()} คน</strong></span>
     `;
@@ -3724,7 +3778,8 @@ function calculateDataQuality() {
         }
     });
 
-    const totalSegi = SEGI_WEIGHTS.reduce((a, b) => a + b, 0);
+    const weights = getCurrentWeights();
+    const totalStdWeight = getCurrentTotalStdWeight();
 
     const finalRows = groupStats.map(st => {
         let asr = 0, varVal = 0, se = 0, lci = 0, uci = 0;
@@ -3733,7 +3788,7 @@ function calculateDataQuality() {
             let asrRaw = 0;
             let varRaw = 0;
             for (let i = 0; i < 18; i++) {
-                const w = SEGI_WEIGHTS[i] / totalSegi;
+                const w = weights[i] / totalStdWeight;
                 const pop = popByAge[i];
                 const d = st.ageCounts[i];
                 if (pop > 0) {
@@ -3832,13 +3887,15 @@ function renderDataQualityTable(rows, sex, startYear, endYear, totalPop) {
         tbody.appendChild(tr);
     });
 
-    generatedCSVFilename = sex === 1 ? 'QC-Males.csv' : 'QC-Females.csv';
+    const stdPop = getCurrentStdPop();
+    generatedCSVFilename = sex === 1 ? `QC-Males_${stdPop.shortName}.csv` : `QC-Females_${stdPop.shortName}.csv`;
     const allRow = rows[0] || { N: 0, dcoPct: 0, clinPct: 0, mvPct: 0, unkPct: 0 };
     const popNotice = totalPop <= 0 ? ' <span style="color:#dc2626;">(ยังไม่ได้นำเข้าไฟล์ประชากร ค่า ASR จะแสดง 0.00)</span>' : '';
 
     document.getElementById('qcSummaryBar').innerHTML = `
         <span>เพศที่เลือก: <strong>${sex === 1 ? 'เพศชาย (QC-Males)' : 'เพศหญิง (QC-Females)'}</strong></span>
         <span>ช่วงปี: <strong>${startYear} - ${endYear}</strong></span>
+        <span>ประชากรมาตรฐานโลก: <strong>${stdPop.name}</strong></span>
         <span>All sites but C44 (N): <strong>${allRow.N.toLocaleString()} ราย</strong></span>
         <span>DCO: <strong>${allRow.dcoPct}%</strong> | CLIN: <strong>${allRow.clinPct}%</strong> | MV: <strong>${allRow.mvPct}%</strong> | UNK: <strong>${allRow.unkPct}%</strong>${popNotice}</span>
     `;
@@ -4981,10 +5038,12 @@ function calcAsrFromCounts(ageCounts, ageUnk, totalCases, popByAge) {
     const totalPop = popByAge.reduce((a, b) => a + b, 0);
     if (totalPop <= 0 || totalCases <= 0) return 0;
 
+    const weights = getCurrentWeights();
+    const totalWeight = getCurrentTotalStdWeight();
     let asrRaw = 0;
     for (let i = 0; i < 18; i++) {
         const rate = popByAge[i] > 0 ? (ageCounts[i] / popByAge[i]) * 100000 : 0;
-        asrRaw += (rate * SEGI_WEIGHTS[i]) / 100000;
+        asrRaw += (rate * weights[i]) / totalWeight;
     }
     const knownAges = totalCases - ageUnk;
     const asr = (knownAges > 0 && ageUnk > 0) ? asrRaw * (totalCases / knownAges) : asrRaw;
@@ -4992,7 +5051,6 @@ function calcAsrFromCounts(ageCounts, ageUnk, totalCases, popByAge) {
 }
 
 function computeTrendSeriesForSex(sex, years, popData) {
-    const totalSegi = SEGI_WEIGHTS.reduce((a, b) => a + b, 0);
     const popByYear = {};
     years.forEach(y => {
         popByYear[y] = getPopulationByAgeGroup(popData, y, y);
@@ -5267,7 +5325,8 @@ function exportTrendCSV() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `Top${cfg.topN}_Cancer_ASR_Trend_${cfg.label}_${startYear}t${endYear}.csv`;
+    const stdPop = getCurrentStdPop();
+    a.download = `Top${cfg.topN}_Cancer_ASR_Trend_${cfg.label}_${stdPop.shortName}_${startYear}t${endYear}.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
