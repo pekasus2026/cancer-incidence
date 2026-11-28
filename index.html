@@ -384,45 +384,47 @@
         }
 
         .surv-forest-grid {
-            display: grid; grid-template-columns: 1.45fr 1fr; gap: 16px;
+            display: grid; grid-template-columns: 1.25fr 1fr; gap: 14px;
             margin-top: 10px; align-items: stretch;
         }
         @media (max-width: 1260px) { .surv-forest-grid { grid-template-columns: 1fr; } }
 
         .surv-table-card {
-            background: var(--card); border-radius: 12px; padding: 16px;
+            background: var(--card); border-radius: 12px; padding: 12px 13px;
             border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-            overflow-x: auto; min-width: 0;
+            overflow-x: visible; min-width: 0;
         }
-        .surv-table-card h3 { font-size: 1rem; margin: 0 0 4px 0; font-family: 'Prompt', 'Sarabun', sans-serif; }
-        .surv-table-sub { font-size: 0.78rem; color: #64748b; margin-bottom: 10px; }
+        .surv-table-card h3 { font-size: 0.94rem; margin: 0 0 3px 0; font-family: 'Prompt', 'Sarabun', sans-serif; }
+        .surv-table-sub { font-size: 0.74rem; color: #64748b; margin-bottom: 8px; }
         .surv-table-card table {
             width: 100%; border-collapse: collapse; text-align: center;
-            font-size: 0.8rem; white-space: nowrap;
+            font-size: 0.68rem; line-height: 1.25; white-space: normal; table-layout: auto;
         }
         .surv-table-card th, .surv-table-card td {
-            padding: 8px 7px; border: 1px solid #e2e8f0; text-align: center;
+            padding: 4px 4px; border: 1px solid #e2e8f0; text-align: center;
+            word-break: break-word;
         }
         .surv-table-card th {
             position: static; background: #f8fafc; color: #334155;
-            font-family: 'Prompt', 'Sarabun', sans-serif; font-weight: 600; font-size: 0.76rem;
+            font-family: 'Prompt', 'Sarabun', sans-serif; font-weight: 600; font-size: 0.65rem;
+            padding: 5px 4px;
         }
         .surv-table-card td:first-child, .surv-table-card th:first-child {
             position: static; text-align: left; font-weight: 600; max-width: none; background: transparent;
         }
         .surv-table-card td:last-child { text-align: center; font-family: 'Sarabun', sans-serif; font-weight: 500; color: inherit; }
-        .surv-ci-sub { display: block; font-size: 0.7rem; color: #64748b; font-weight: 400; }
+        .surv-ci-sub { display: block; font-size: 0.58rem; color: #64748b; font-weight: 400; line-height: 1.15; }
 
         .surv-tables-split {
             display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 16px; margin-top: 18px; align-items: start;
+            gap: 14px; margin-top: 16px; align-items: start;
         }
-        @media (max-width: 1320px) { .surv-tables-split { grid-template-columns: 1fr; } }
+        @media (max-width: 1180px) { .surv-tables-split { grid-template-columns: 1fr; } }
 
-        .hr-badge-risk { display: inline-block; background: #fee2e2; color: #b91c1c; padding: 2px 8px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; }
-        .hr-badge-prot { display: inline-block; background: #dcfce7; color: #15803d; padding: 2px 8px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; }
-        .hr-badge-ns { display: inline-block; background: #f1f5f9; color: #475569; padding: 2px 8px; border-radius: 999px; font-size: 0.72rem; font-weight: 600; }
-        .hr-badge-ref { display: inline-block; background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 999px; font-size: 0.72rem; font-weight: 600; }
+        .hr-badge-risk { display: inline-block; background: #fee2e2; color: #b91c1c; padding: 1px 5px; border-radius: 999px; font-size: 0.62rem; font-weight: 700; line-height: 1.2; }
+        .hr-badge-prot { display: inline-block; background: #dcfce7; color: #15803d; padding: 1px 5px; border-radius: 999px; font-size: 0.62rem; font-weight: 700; line-height: 1.2; }
+        .hr-badge-ns { display: inline-block; background: #f1f5f9; color: #475569; padding: 1px 5px; border-radius: 999px; font-size: 0.62rem; font-weight: 600; line-height: 1.2; }
+        .hr-badge-ref { display: inline-block; background: #fef3c7; color: #92400e; padding: 1px 5px; border-radius: 999px; font-size: 0.62rem; font-weight: 600; line-height: 1.2; }
 
         .surv-empty-box {
             background: var(--card); border: 1px dashed #94a3b8; border-radius: 12px;
@@ -1677,8 +1679,13 @@
                 </div>
 
                 <div class="surv-table-card">
-                    <h3>ตารางผลลัพธ์ Cox Proportional Hazards Model</h3>
-                    <div class="surv-table-sub" id="survCoxModelSub">Adjusted Hazard Ratio (HR), 95% Confidence Interval และ p-value</div>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; flex-wrap: wrap; margin-bottom: 4px;">
+                        <div>
+                            <h3>ตารางผลลัพธ์ Cox Proportional Hazards Model</h3>
+                            <div class="surv-table-sub" id="survCoxModelSub" style="margin-bottom: 0;">Adjusted Hazard Ratio (HR), 95% Confidence Interval และ p-value</div>
+                        </div>
+                        <button type="button" id="exportSurvCoxBtn" class="btn btn-success" style="padding: 4px 10px; font-size: 0.74rem;" onclick="exportSurvCoxCSV()" disabled>Export CSV</button>
+                    </div>
                     <table>
                         <thead>
                             <tr>
@@ -1698,8 +1705,13 @@
             <!-- แถวที่ 6: ตารางสรุปแยกซ้าย-ขวา Summary Stage (EXT) และ Stage (STAG) -->
             <div class="surv-tables-split">
                 <div class="surv-table-card">
-                    <h3>ตารางสรุป Summary Stage (EXT) พร้อม 95% CI</h3>
-                    <div class="surv-table-sub">Localized (EXT=2), Regional (EXT=3–4), Metastasis (EXT=5), Unknown</div>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; flex-wrap: wrap; margin-bottom: 4px;">
+                        <div>
+                            <h3>ตารางสรุป Summary Stage (EXT) พร้อม 95% CI</h3>
+                            <div class="surv-table-sub" style="margin-bottom: 0;">Localized (EXT=2), Regional (EXT=3–4), Metastasis (EXT=5), Unknown</div>
+                        </div>
+                        <button type="button" id="exportSurvExtBtn" class="btn btn-success" style="padding: 4px 10px; font-size: 0.74rem;" onclick="exportSurvExtCSV()" disabled>Export CSV</button>
+                    </div>
                     <table>
                         <thead>
                             <tr>
@@ -1717,8 +1729,13 @@
                 </div>
 
                 <div class="surv-table-card">
-                    <h3>ตารางสรุป Stage (STAG) พร้อม 95% CI</h3>
-                    <div class="surv-table-sub">Stage1 (STAG=1), Stage2 (STAG=2), Stage3 (STAG=3), Stage4 (STAG=4), Unknown</div>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; flex-wrap: wrap; margin-bottom: 4px;">
+                        <div>
+                            <h3>ตารางสรุป Stage (STAG) พร้อม 95% CI</h3>
+                            <div class="surv-table-sub" style="margin-bottom: 0;">Stage1 (STAG=1), Stage2 (STAG=2), Stage3 (STAG=3), Stage4 (STAG=4), Unknown</div>
+                        </div>
+                        <button type="button" id="exportSurvStagBtn" class="btn btn-success" style="padding: 4px 10px; font-size: 0.74rem;" onclick="exportSurvStagCSV()" disabled>Export CSV</button>
+                    </div>
                     <table>
                         <thead>
                             <tr>
@@ -2063,6 +2080,8 @@ const survMedianPlotPlugin = {
     afterDatasetsDraw(chart, args, options) {
         if (chart.config.type !== 'line') return;
         if (options && options.disableMedian) return;
+        const cid = chart.canvas && chart.canvas.id ? chart.canvas.id : '';
+        if (!cid.startsWith('surv')) return;
         const { ctx, chartArea, scales } = chart;
         if (!chartArea || !scales.x || !scales.y) return;
 
@@ -2128,6 +2147,9 @@ const chartInstances = {};
 const survChartInstances = {};
 let currentView = 'dashboard';
 let lastSurvFilteredRecords = [];
+let survCoxCSVRows = [];
+let survExtCSVRows = [];
+let survStagCSVRows = [];
 
 // สถานะตัวกรองรายโรค (เลือกได้หลายข้อ) สำหรับเมนู 5, 6, 7 และ 9
 const selectedDiseaseFilters = {
@@ -2170,6 +2192,12 @@ function resetImportedData() {
     generatedCSVRows = [];
     generatedCSVFilename = 'export.csv';
     lastSurvFilteredRecords = [];
+    survCoxCSVRows = [];
+    survExtCSVRows = [];
+    survStagCSVRows = [];
+    if (document.getElementById('exportSurvCoxBtn')) document.getElementById('exportSurvCoxBtn').disabled = true;
+    if (document.getElementById('exportSurvExtBtn')) document.getElementById('exportSurvExtBtn').disabled = true;
+    if (document.getElementById('exportSurvStagBtn')) document.getElementById('exportSurvStagBtn').disabled = true;
 
     document.getElementById('cancerFile').value = '';
     document.getElementById('malePopFile').value = '';
@@ -3186,13 +3214,28 @@ function renderDashboard() {
             labels: yearsList,
             datasets: [
                 { label: 'HV% รวม', data: annualHvAll, borderColor: '#059669', backgroundColor: '#059669', tension: 0.25 },
-                { label: 'DCO% รวม', data: annualDcoAll, borderColor: '#dc2626', backgroundColor: '#dc2626', tension: 0.25 }
+                { label: 'DCO% รวม', data: annualDcoAll, borderColor: '#dc2626', backgroundColor: '#dc2626', tension: 0.25 },
+                {
+                    label: 'KPI = 70%',
+                    data: yearsList.map(() => 70),
+                    borderColor: '#d97706',
+                    backgroundColor: '#d97706',
+                    borderWidth: 2,
+                    borderDash: [6, 4],
+                    pointRadius: 0,
+                    pointHoverRadius: 0,
+                    fill: false,
+                    tension: 0
+                }
             ]
         },
         options: {
             responsive: true, maintainAspectRatio: false,
             scales: { y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } } },
-            plugins: { barValueLabels: { enabled: false } }
+            plugins: {
+                barValueLabels: { enabled: false },
+                survMedianPlotPlugin: { disableMedian: true }
+            }
         }
     });
 }
@@ -5306,6 +5349,7 @@ function renderSingleTrendChartByKey(seriesKey) {
             },
             plugins: {
                 barValueLabels: { enabled: false },
+                survMedianPlotPlugin: { disableMedian: true },
                 trendPointLabels: { enabled: true },
                 legend: {
                     position: 'bottom',
@@ -6582,14 +6626,20 @@ function renderSurvivalCoxOnly() {
             : 'ปรับอิทธิพลร่วมกันของเพศ อายุที่วินิจฉัย และระยะโรค Summary Stage (EXT)';
     }
 
+    const coxBtn = document.getElementById('exportSurvCoxBtn');
     if (coxResult.error) {
+        survCoxCSVRows = [];
+        if (coxBtn) coxBtn.disabled = true;
         tbody.innerHTML = `<tr><td colspan="6" style="padding:14px; color:#64748b;">${coxResult.error}</td></tr>`;
         drawSurvForestPlot(coxResult);
         return;
     }
 
+    survCoxCSVRows = [['Factor_Subgroup', 'N', 'Adjusted_HR', '95%_CI_Lower', '95%_CI_Upper', '95%_CI', 'p_value', 'Interpretation']];
+
     tbody.innerHTML = coxResult.rows.map(r => {
         if (r.isRef) {
+            survCoxCSVRows.push([r.label, r.n, '1.00', '1.00', '1.00', 'Reference', '-', 'กลุ่มอ้างอิง']);
             return `
                 <tr>
                     <td>${r.label}</td>
@@ -6603,8 +6653,25 @@ function renderSurvivalCoxOnly() {
         }
         const isSig = r.p !== null && r.p < 0.05;
         let badgeHtml = '<span class="hr-badge-ns">ไม่มีนัยสำคัญ (p ≥ 0.05)</span>';
-        if (isSig && r.hr > 1) badgeHtml = '<span class="hr-badge-risk">เสี่ยงสูงขึ้นอย่างมีนัยสำคัญ</span>';
-        else if (isSig && r.hr < 1) badgeHtml = '<span class="hr-badge-prot">ความเสี่ยงต่ำลงอย่างมีนัยสำคัญ</span>';
+        let interpText = 'ไม่มีนัยสำคัญ (p >= 0.05)';
+        if (isSig && r.hr > 1) {
+            badgeHtml = '<span class="hr-badge-risk">เสี่ยงสูงขึ้นอย่างมีนัยสำคัญ</span>';
+            interpText = 'เสี่ยงสูงขึ้นอย่างมีนัยสำคัญ';
+        } else if (isSig && r.hr < 1) {
+            badgeHtml = '<span class="hr-badge-prot">ความเสี่ยงต่ำลงอย่างมีนัยสำคัญ</span>';
+            interpText = 'ความเสี่ยงต่ำลงอย่างมีนัยสำคัญ';
+        }
+        const pFormatted = formatPValue(r.p);
+        survCoxCSVRows.push([
+            r.label,
+            r.n,
+            r.hr.toFixed(2),
+            r.lower.toFixed(2),
+            r.upper.toFixed(2),
+            `${r.lower.toFixed(2)} - ${r.upper.toFixed(2)}`,
+            pFormatted,
+            interpText
+        ]);
 
         return `
             <tr>
@@ -6612,11 +6679,13 @@ function renderSurvivalCoxOnly() {
                 <td>${r.n.toLocaleString()}</td>
                 <td style="font-weight:700; color:${isSig ? (r.hr > 1 ? '#b91c1c' : '#15803d') : '#0f172a'};">${r.hr.toFixed(2)}</td>
                 <td>${r.lower.toFixed(2)} – ${r.upper.toFixed(2)}</td>
-                <td style="font-weight:${isSig ? '700' : '400'};">${formatPValue(r.p)}</td>
+                <td style="font-weight:${isSig ? '700' : '400'};">${pFormatted}</td>
                 <td>${badgeHtml}</td>
             </tr>
         `;
     }).join('');
+
+    if (coxBtn) coxBtn.disabled = (survCoxCSVRows.length <= 1);
 
     drawSurvForestPlot(coxResult);
 }
@@ -6655,6 +6724,12 @@ function renderSurvivalView() {
 
     if (!cohort || cohort.length === 0) {
         destroyAllSurvCharts();
+        survCoxCSVRows = [];
+        survExtCSVRows = [];
+        survStagCSVRows = [];
+        if (document.getElementById('exportSurvCoxBtn')) document.getElementById('exportSurvCoxBtn').disabled = true;
+        if (document.getElementById('exportSurvExtBtn')) document.getElementById('exportSurvExtBtn').disabled = true;
+        if (document.getElementById('exportSurvStagBtn')) document.getElementById('exportSurvStagBtn').disabled = true;
         if (emptyNotice) emptyNotice.style.display = 'block';
         if (contentArea) contentArea.style.display = 'none';
         if (statusInfo) statusInfo.textContent = 'ไม่พบเรคคอร์ดที่มีวันที่ DIAGD และ DLS สมบูรณ์ตามเงื่อนไข';
@@ -6942,6 +7017,7 @@ function renderSurvivalView() {
     // แถวที่ 3: กราฟเส้น ชาย-หญิง Survival by Summary Stage (EXT) 4 กราฟ
     const extTableBody = document.getElementById('survExtTableBody');
     let extTableHtml = '';
+    survExtCSVRows = [['Summary_Stage_EXT', 'Sex_Group', 'N', 'Deaths', '1Yr_OS', '1Yr_OS_95%CI', '3Yr_OS', '3Yr_OS_95%CI', '5Yr_OS', '5Yr_OS_95%CI', 'Median_Survival', 'Median_95%CI']];
 
     extKeys.forEach(k => {
         const subRecs = extGroupsRecs[k];
@@ -6994,6 +7070,12 @@ function renderSurvivalView() {
         const c5F = formatPctWithCI(kmSubF.surv5Yr);
         const cMedF = formatMedianWithCI(kmSubF);
 
+        survExtCSVRows.push(
+            [extMeta[k].label, 'รวม (All)', kmSubAll.n, kmSubAll.events, c1All.main, c1All.ci, c3All.main, c3All.ci, c5All.main, c5All.ci, cMedAll.main, cMedAll.ci],
+            [extMeta[k].label, 'เพศชาย (Male)', kmSubM.n, kmSubM.events, c1M.main, c1M.ci, c3M.main, c3M.ci, c5M.main, c5M.ci, cMedM.main, cMedM.ci],
+            [extMeta[k].label, 'เพศหญิง (Female)', kmSubF.n, kmSubF.events, c1F.main, c1F.ci, c3F.main, c3F.ci, c5F.main, c5F.ci, cMedF.main, cMedF.ci]
+        );
+
         extTableHtml += `
             <tr style="background:#f8fafc; font-weight:600;">
                 <td>${extMeta[k].label} (รวม)</td>
@@ -7025,6 +7107,7 @@ function renderSurvivalView() {
         `;
     });
     if (extTableBody) extTableBody.innerHTML = extTableHtml;
+    if (document.getElementById('exportSurvExtBtn')) document.getElementById('exportSurvExtBtn').disabled = (survExtCSVRows.length <= 1);
 
     // แถวที่ 4: กราฟเส้น ชาย-หญิง Survival by Stage (STAG) 5 กราฟ
     const stagIdMap = {
@@ -7037,6 +7120,7 @@ function renderSurvivalView() {
 
     const stagTableBody = document.getElementById('survStagTableBody');
     let stagTableHtml = '';
+    survStagCSVRows = [['Stage_STAG', 'Sex_Group', 'N', 'Deaths', '1Yr_OS', '1Yr_OS_95%CI', '3Yr_OS', '3Yr_OS_95%CI', '5Yr_OS', '5Yr_OS_95%CI', 'Median_Survival', 'Median_95%CI']];
 
     stagKeys.forEach(k => {
         const subRecs = stagGroupsRecs[k];
@@ -7090,6 +7174,12 @@ function renderSurvivalView() {
         const c5F = formatPctWithCI(kmSubF.surv5Yr);
         const cMedF = formatMedianWithCI(kmSubF);
 
+        survStagCSVRows.push(
+            [stagMeta[k].label, 'รวม (All)', kmSubAll.n, kmSubAll.events, c1All.main, c1All.ci, c3All.main, c3All.ci, c5All.main, c5All.ci, cMedAll.main, cMedAll.ci],
+            [stagMeta[k].label, 'เพศชาย (Male)', kmSubM.n, kmSubM.events, c1M.main, c1M.ci, c3M.main, c3M.ci, c5M.main, c5M.ci, cMedM.main, cMedM.ci],
+            [stagMeta[k].label, 'เพศหญิง (Female)', kmSubF.n, kmSubF.events, c1F.main, c1F.ci, c3F.main, c3F.ci, c5F.main, c5F.ci, cMedF.main, cMedF.ci]
+        );
+
         stagTableHtml += `
             <tr style="background:#f8fafc; font-weight:600;">
                 <td>${stagMeta[k].label} (รวม)</td>
@@ -7121,9 +7211,51 @@ function renderSurvivalView() {
         `;
     });
     if (stagTableBody) stagTableBody.innerHTML = stagTableHtml;
+    if (document.getElementById('exportSurvStagBtn')) document.getElementById('exportSurvStagBtn').disabled = (survStagCSVRows.length <= 1);
 
     // แถวที่ 5: Forest Plot & ตาราง Cox PH
     renderSurvivalCoxOnly();
+}
+
+function downloadCSVFromRows(rows, filename) {
+    if (!rows || rows.length === 0) return;
+    const csvContent = "\uFEFF" + rows.map(row =>
+        row.map(cell => {
+            const str = String(cell ?? '');
+            return (str.includes(',') || str.includes('"') || str.includes('\n'))
+                ? `"${str.replace(/"/g, '""')}"`
+                : str;
+        }).join(',')
+    ).join('\r\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
+
+function exportSurvCoxCSV() {
+    const startYear = document.getElementById('startYear')?.value || '';
+    const endYear = document.getElementById('endYear')?.value || '';
+    const stageField = document.getElementById('survCoxStageSelector')?.value || 'EXT';
+    downloadCSVFromRows(survCoxCSVRows, `Cox_PH_Model_${stageField}_${startYear}t${endYear}.csv`);
+}
+
+function exportSurvExtCSV() {
+    const startYear = document.getElementById('startYear')?.value || '';
+    const endYear = document.getElementById('endYear')?.value || '';
+    downloadCSVFromRows(survExtCSVRows, `Survival_Summary_Stage_EXT_${startYear}t${endYear}.csv`);
+}
+
+function exportSurvStagCSV() {
+    const startYear = document.getElementById('startYear')?.value || '';
+    const endYear = document.getElementById('endYear')?.value || '';
+    downloadCSVFromRows(survStagCSVRows, `Survival_Stage_STAG_${startYear}t${endYear}.csv`);
 }
 
 renderDashboard();
